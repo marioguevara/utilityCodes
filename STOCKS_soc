@@ -1,0 +1,191 @@
+NA_LandCover_2010_25haMMU,  sg250grcm2,       fitlm,       fitrg
+library(raster)
+mx=stack(list.files()[11])
+us=stack(list.files()[12])
+
+
+
+a=cellStats(us[[2]], sum, na.rm=TRUE)
+b=25000*25000
+usSG=(a*b)/1e+15
+
+a=cellStats(us[[3]], sum, na.rm=TRUE)
+b=25000*25000
+usLM=(a*b)/1e+15
+
+a=cellStats(us[[4]], sum, na.rm=TRUE)
+b=25000*25000
+usRF=(a*b)/1e+15
+
+a=cellStats(mx[[2]], sum, na.rm=TRUE)
+b=25000*25000
+mxSG=(a*b)/1e+15
+
+
+a=cellStats(mx[[3]], sum, na.rm=TRUE)
+b=25000*25000
+mxLM=(a*b)/1e+15
+
+
+a=cellStats(mx[[4]], sum, na.rm=TRUE)
+b=25000*25000
+mxRF=(a*b)/1e+15
+
+usSG; usLM; usRF
+mxSG; mxLM; mxRF
+
+usSGsd; usLMsd; usRFsd
+mxSGsd; mxLMsd; mxRFsd
+
+###
+## sd
+#
+
+a=cellStats(us[[2]], sd, na.rm=TRUE)
+b=25000*25000
+usSGsd=(a*b)/1e+15
+
+a=cellStats(us[[3]], sd, na.rm=TRUE)
+b=25000*25000
+usLMsd=(a*b)/1e+15
+
+a=cellStats(us[[4]], sd, na.rm=TRUE)
+b=25000*25000
+usRFsd=(a*b)/1e+15
+
+a=cellStats(mx[[2]], sd, na.rm=TRUE)
+b=25000*25000
+mxSGsd=(a*b)/1e+15
+
+
+a=cellStats(mx[[3]], sd, na.rm=TRUE)
+b=25000*25000
+mxLMsd=(a*b)/1e+15
+
+
+a=cellStats(mx[[4]], sd, na.rm=TRUE)
+b=25000*25000
+mxRFsd=(a*b)/1e+15
+
+
+usSGsd; usLMsd; usRFsd
+mxSGsd; mxLMsd; mxRFsd
+
+##
+##5km  
+
+a=cellStats(US[[1]], sum, na.rm=TRUE)
+b=100000*100000*25
+usLM=(a*b)/1e+15
+
+a=cellStats(US[[2]], sum, na.rm=TRUE)
+b=100000*100000*25
+usRF=(a*b)/1e+15
+
+a=cellStats(US[[3]], sum, na.rm=TRUE)
+b=100000*100000*25
+usKN=(a*b)/1e+15
+
+a=cellStats(US[[4]], sum, na.rm=TRUE)
+b=100000*100000*25
+usBR=(a*b)/1e+15
+
+a=cellStats(US[[5]], sum, na.rm=TRUE)
+b=100000*100000*25
+usMED=(a*b)/1e+15
+
+a=cellStats(MX[[1]], sum, na.rm=TRUE)
+b=100000*100000*25
+mxLM=(a*b)/1e+15
+
+a=cellStats(MX[[2]], sum, na.rm=TRUE)
+b=100000*100000*25
+mxRF=(a*b)/1e+15
+
+a=cellStats(MX[[3]], sum, na.rm=TRUE)
+b=100000*100000*25
+mxKN=(a*b)/1e+15
+
+a=cellStats(MX[[4]], sum, na.rm=TRUE)
+b=100000*100000*25
+mxBR=(a*b)/1e+15
+
+a=cellStats(MX[[5]], sum, na.rm=TRUE)
+b=100000*100000*25
+mxMED=(a*b)/1e+15
+
+
+mxMED;mxBR;mxKN;mxRF;mxLM
+usMED;usBR;usKN;usRF;usLM
+##
+## sd
+#
+
+a=cellStats(us[[2]], sd, na.rm=TRUE)
+b=25000*25000
+usSGsd=(a*b)/1e+15
+
+a=cellStats(us[[3]], sd, na.rm=TRUE)
+b=25000*25000
+usLMsd=(a*b)/1e+15
+
+a=cellStats(us[[4]], sd, na.rm=TRUE)
+b=25000*25000
+usRFsd=(a*b)/1e+15
+
+a=cellStats(mx[[2]], sd, na.rm=TRUE)
+b=25000*25000
+mxSGsd=(a*b)/1e+15
+
+
+a=cellStats(mx[[3]], sd, na.rm=TRUE)
+b=25000*25000
+mxLMsd=(a*b)/1e+15
+
+
+a=cellStats(mx[[4]], sd, na.rm=TRUE)
+b=25000*25000
+mxRFsd=(a*b)/1e+15
+
+
+usSGsd; usLMsd; usRFsd
+mxSGsd; mxLMsd; mxRFsd
+
+
+
+
+
+
+
+
+
+
+
+
+
+usstksd=c(usSGsd; usLMsd; usRFsd)
+mxstksd=c(mxSGsd, mxLMsd, mxRFsd)
+
+
+
+
+
+
+
+rm(list=ls())
+setwd("X:\\Mario_Guevara\\011_humedadMensual\\New folder")
+library(raster)
+#library(maptools)
+filez <- list.files(path=getwd(),full.name=F,pattern="\\.tif$")
+r=stack(filez, bands=4)
+~                                                                               
+~                                                                               
+~                                                                               
+~                                                                               
+~                      
+
+
+
+
+
+

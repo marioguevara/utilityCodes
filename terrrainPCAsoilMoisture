@@ -1,0 +1,83 @@
+
+library(raster)
+
+ cov=stack(list.files()[1])
+cov=as.data.frame(cov, xy=TRUE)
+ cov=na.omit(cov)
+
+
+colnames(cov)[3]='land'
+colnames(cov)[4]='hill'
+colnames(cov)[5]='Slope'
+colnames(cov)[6]='Aspect'
+colnames(cov)[7]='CSCurv'
+colnames(cov)[8]='LCurv'
+colnames(cov)[9]='ConvIdx'
+colnames(cov)[10]='ClDep'
+colnames(cov)[11]='FlowAc'
+colnames(cov)[12]='TWI'
+colnames(cov)[13]='LSfactor'
+colnames(cov)[14]='ChNeBL'
+colnames(cov)[15]='VDChNe'
+colnames(cov)[16]='ValDepth'
+colnames(cov)[17]='RSP'
+
+coordinates(cov)=~x+y
+gridded(cov)=TRUE
+
+cov=stack(cov)
+
+ d=readRDS( "global5cm.rds" )
+e=extract(cov, d[,7:8])
+
+d=cbind(d[c(6,9)],e )
+d=na.omit(d)
+
+
+pca=prcomp(d[,1:17], scale=TRUE)
+#pca
+biplot(pca)
+
+clus <- kmeans(pca$x, centers=3)
+ d$clu=clus$cluster
+
+autoplot(prcomp(d, scale=TRUE),label.size=5, data = dat2, colour = 'clu', loadings = TRUE,loadings.label = TRUE, loadings.label.size =5,loadings.colour = 'black')
+
+plot3d(pca$x[,1:3], col=clus$cluster, cex=2)
+
+pca3d( pca, group=clus$cluster,
+fancy= FALSE, bg= "black",radius=0.1,
+axes.color= "white", new= TRUE,show.scale=TRUE, show.ellipses=FALSE, show.axe.titles=TRUE,
+show.axes=TRUE, biplot.vars=17, biplot=TRUE)
+
+
+pc <- princomp(scale(d), cor=TRUE, scores=TRUE)
+
+text3d(pc$scores[,1:3],texts=dat2$clu)
+text3d(pc$loadings[,1:3], texts=rownames(pc$loadings), col="red")
+coords <- NULL
+for (i in 1:nrow(pc$loadings)) {
+  coords <- rbind(coords, rbind(c(0,0,0),pc$loadings[i,1:3]))
+}
+lines3d(coords, col="red", lwd=4)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,208 @@
+rm(list=ls())
+#setwd("/home/mario/work/SoilMoisture/TAMU_NASDM_Full-2013-12-10")
+
+library(dplyr)
+
+folders <- list.dirs(path=getwd(),full.name=TRUE)
+
+folders
+
+# loop which sweeps through each folder (only works on *.nc files)
+
+global<-data.frame(Y=integer(),stationID=numeric(),M=numeric(), D=as.numeric(), DOY=numeric(), depth_5=numeric(),
+depth_25=numeric(),depth_60=numeric(),depth_75=numeric(),Longitude=numeric(),Latitude=numeric(),
+RS_SM=numeric())#,stringsAsFactors=FALSE)
+
+results<-data.frame(x=numeric(),y=numeric(),IDstation=numeric(), cor=as.numeric(), dimAll=numeric(), dimYear=numeric())#,stringsAsFactors=FALSE)
+
+for (i in 2:length(folders)){
+##for (i in 162:1289){
+##i=1288### arreglo de separacion por tabuladores en 133 y 158### 251 y 285 con coordenadas en mar 
+##517, 518, 519, 568 sin datos en superficie depth_5### 964 942 974 NO IDEA
+  # files in each of these
+
+
+filez <- list.files(paste(folders[i],sep=""),pattern="\\.txt$")
+ 
+stations = paste(folders[i],"/",filez[3],sep="")
+
+if(length(filez)==3){
+
+
+stations=read.table(stations, sep='\t', header=T, fill=T)
+
+xy=stations[,8:7]
+xy
+
+#write.table(xy, file='xy285.txt', sep='\t', col.names=T, row.names=F)
+
+
+readings = paste(folders[i],"/",filez[2],sep="")
+ 
+readings=read.table(readings, sep='\t', header=T)
+
+m=merge(readings, xy)
+
+if("depth_5" %in% colnames(m)){ ##RECORDAR PROFUNDIDAD
+
+m[which(m$depth_5==-9999),]=NA ##RECORDAR PROFUNDIDAD
+
+m=na.omit(m)
+
+#if(dim(m)[1]> 3){
+
+xx=m %>% group_by(Y) %>% summarise_each(funs(mean))
+xx
+if(dim(xx)[1]>= 3){
+
+
+##
+##
+library(foreign)
+
+rasters <- list.files(path="/home/mario/work/SoilMoisture/mean1kmUSA/SM_1km",full.name=F,pattern="\\.tif$")
+start=dim(xx)[1]
+end=36-start
+
+rasters=rasters [end:36]
+
+library(raster)
+
+xy2=data.frame(a=1)
+
+for (j in 1:length(rasters)){
+
+nameRaster=paste("/home/mario/work/SoilMoisture/mean1kmUSA/SM_1km/", rasters[j],sep="")
+x=stack(nameRaster)
+xy2=cbind(xy2,extract(x, xy[,1:2]))
+}
+xy2
+xy2=data.frame(xy2)
+dim=dim(xx)[1]+1
+xy2=data.frame(xy2[2:dim])
+str(xy2)
+txy2=t(xy2)
+txy2=data.frame(txy2)
+str(txy2)
+
+if(is.na(txy2[1,])==FALSE) {
+
+#txy2$year=seq(2009,2013)
+
+colnames(txy2)[1]='RS_SM'
+
+##
+
+#nameIDstat=as.character(stations$StationID)
+
+cb=cbind(xx, na.omit(txy2))
+
+cb[which(cb$RS_SM==-9999),]=NA 
+
+cb=na.omit(cb)
+
+x=xy[,1]
+y=xy[,2]
+IDstation=substr(filez[2], 1,10)
+cor=cor(cb$depth_5, cb$RS_SM) ##RECORDAR PROFUNDIDAD
+dim=dim(m)[1]
+dim2=dim(xx)[1]
+
+results[i,1]<-x
+results[i,2]<-y
+results[i,3]<-IDstation
+results[i,4]<-cor
+results[i,5]<-dim
+results[i,6]<-dim2
+
+cb=data.frame(cb[,1:5], depth_5=cb$depth_5,Longitude=cb$Longitude, Latitude=cb$Latitude, RS_SM=cb$RS_SM)##RECORDAR PROFUNDIDAD
+#cb=cb[-c(7,8,9)]
+#colnames(cb)[7]=names(global)[7]
+
+
+global=data.frame(M=global$M, stationID=global$stationID, Y=global$Y, global[,4:6], global[7:9])##RECORDAR PROFUNDIDAD
+
+
+#cb=data.frame(cb[,1:5], depth_5=cb$depth_5, RS_SM=cb$RS_SM)
+
+
+global=rbind(global, cb) ###105 depth_20 NOT 25###158"depth_20"  "depth_51"  "depth_102"##
+### 161 y 163 depth_20"  "depth_31"  "depth_51"  "depth_102" "depth_152"
+
+
+    }
+   }
+  }
+ }
+}
+
+write.table(results, file="val_depth5.txt", sep='\t', col.names=T, row.names=F)
+
+qplot(RS_SM, depth_5, data=global, geom=c("point", "smooth"),
+   method="lm", formula=y~x, color=Y,
+   main="Regression of RS_SM on SM depth 5cm",
+   xlab="TIME", ylab="depth_5")
+
+
+scatterPlot(g, x = "depth_5", y = "RS_SM",  spline=T, mod.line=T, linear=T)
+
+par(mfrow=c(2:1))
+ boxplot(global$depth_5~global$Y,cex=1,col="gray", main='SM depth 5', xlab='year' , ylab='m3/m3')
+
+abline(h=0.3, col='red')
+
+ boxplot(global$RS_SM~global$Y,cex=1,col="gray", main='Remote Sensing SM', xlab='year' , ylab='m3/m3')
+
+
+abline(h=0.2, col='red')
+
+
+scatterPlot(global, x = "depth_5", y = "RS_SM",  smooth=F, mod.line=T, linear=T)
+
+xxx=global %>% group_by(Y) %>% summarise_each(funs(mean))
+
+scatterPlot(xxx, x = "depth_5", y = "RS_SM", linear=T, z='Y')
+
+
+scatterPlot(xxx, x = "Y", y = "depth_5", linear=T, col='black')
+scatterPlot(xxx, x = "Y", y = "RS_SM", linear=T, col='black')
+
+
+
+g=global
+g$x=log(g$depth_5)
+ g$y=log(g$RS_SM)
+
+
+
+
+
+library(rgdal)
+
+coordinates(m)=~Longitude+Latitude
+
+library(raster)
+
+r=brick("J:\\ALL\\Humedad del suelo\\anual_brick_combined\\annual_brick_2012.tif")
+
+e=extract(r, m)
+
+library(ggplot2)
+p<-ggplot(stat, aes(x=depth_5, y=RS_SM)) +
+  geom_point(shape=1) +    
+  geom_smooth(method=lm)+ 
+  geom_errorbarh(aes(xmin=depth_5-depth_5sd,
+                   xmax=depth_5+depth_5sd),
+                 height=0.002)+
+  geom_errorbar(aes(ymin=RS_SM-RS_SMsd,
+                    ymax=RS_SM+RS_SMsd),
+                width=0.002)
+
+print(p)
+
+xxx=global %>% group_by(Y) %>% summarise_each(funs(sum))
+sd=global %>% group_by(Y) %>% summarise_each(funs(sd))
+
+stat=data.frame(depth_5=xxx$depth_5, RS_SM=xxx$RS_SM, depth_5sd=sd$depth_5, RS_SMsd=xxx$RS_SM, Y=xxx$Y)
+
+

@@ -1,0 +1,66 @@
+library(raster)
+folders <- list.dirs(path=getwd(),full.name=TRUE)
+for (i in 2:length(folders)){
+filez <- list.files(paste(folders[i],sep=""),pattern="\\.nc4$")
+dat = paste(folders[i],"/",filez,sep="")
+sm <- stack(dat, varname="sm_ext")
+beginCluster(6)
+f <- function(x) calc(x, mean, na.rm=TRUE)
+sm <- clusterR(sm, f)
+writeRaster(sm, file=paste('/home/mario/work/SoilMoisture/ASCAT/sm_ASCAT_',2005+i, '.tif', sep='' ))
+endCluster()
+}
+
+
+fun3 <- function(x) {
+library(mblm)
+if(length(na.omit(x))>1){
+#print(x)
+#print(class(x))
+x<-x[!is.na(x)]
+time <-1:length(x)
+l<-mblm(x ~ time)
+r<-l$coefficients[2]
+p<-summary(l)$coefficients[2,4]
+rr<-c(r,p)
+#rr<-r
+} else{rr<-c(NA,NA)}
+#} else{rr<-NA}
+return(rr)}
+
+g=readRDS('/home/mario/work/SoilMoisture/aquariusAnnual/conus.rds')
+cr=crop(s, g)
+cr=mask(cr, g)
+
+delta <- calc(cr, fun3)
+
+
+p=delta[[2]]
+
+w=(delta[[1]]*23*100)/calc(cr, max)
+p[p<=0.001]=NA
+#w[w>=0]=NA
+plot(w, col=colorRampPalette(c("red", "white", "blue"))(255), zlim=c(-80, 80)) 
+
+plot(p, col='darkgray', add=TRUE, legend=FALSE)
+plot(g, add=TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 

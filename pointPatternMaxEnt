@@ -1,0 +1,48 @@
+library(raster)
+library(dismo)
+library(spatstat)
+library(GSIF)
+library(sp)
+
+
+ameneon=readRDS("amerifluxNeonLocations.rds")  
+#s=readRDS("RIQeft_CATeft_CVgpp_Xgpp.rds")
+
+dd=ameneon[ameneon$net=='ame',]
+dd=ameneon
+coordinates(dd)=~X+Y
+proj4string(dd)<-crs('+proj=longlat +datum=WGS84 +no_defs')
+dd=remove.duplicates(dd)
+
+#cov=as.data.frame(s, xy=TRUE)
+#cov=na.omit(cov)
+#cov[cov$EFT_Categories==0,]=NA
+#cov=cov[complete.cases(cov),]
+
+cov$EFT_Categories=as.character(cov$EFT_Categories)
+cov$EFT_Categories=as.factor(cov$EFT_Categories)
+#cov$EFT_Categories=as.integer(cov$EFT_Categories)
+
+
+
+#str(cov)
+#coordinates(cov)=~x+y
+#gridded(cov)=TRUE
+#proj4string(cov)<-crs('+proj=longlat +datum=WGS84 +no_defs')
+
+mg_owin <- as.owin(data.frame(x=as.data.frame(cov)[,"x"], y=as.data.frame(cov)[,"y"], window = TRUE))
+eberg.ppp <- ppp(x=coordinates(dd)[,1], y=coordinates(dd)[,2], marks=dd$net, window=mg_owin)
+env.eberg.xy <- envelope(eberg.ppp, fun=Gest)
+par(mar=c(4.5,4.5,0.5,0.5), oma=c(0,0,0,0))
+plot(env.eberg.xy, lwd=list(3,1,1,1), main="")
+me.eberg <- MaxEnt(occurrences=eberg.ppp, covariates=cov)
+
+plot(me.eberg@predicted, col=rev(heat.colors(255)))
+plot(raster(me.eberg@sp.domain),legend=FALSE, add=TRUE, col='black')
+
+lu=raster('/home/mario/work/SOC/urban_water_snow_nalccs.tif')
+ plot(lu, add=TRUE, col='white', legend=FALSE)
+
+dim(dd)
+
+

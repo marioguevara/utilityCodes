@@ -1,0 +1,58 @@
+set.seed(911)
+c=na.omit(as.data.frame(cov1))
+CronometroON()
+res=data.frame(r_sq_ext=numeric(), rmse_ext=numeric())
+preds=stack(cov1[[1:2]])
+myTheme <- rasterTheme(region =  dichromat(c('white', 'green','darkgreen', 'black')))
+for (i in 1:100){
+datosNummodel <- separar1(proj,trainsize=0.70) # se ejecuta la función para separar los datos
+entrenamiento <- datosNummodel$trainset  # se crea la base de entranamiento
+prueba <- datosNummodel$testset 
+rg <- ranger(soc ~ ., data = entrenamiento, write.forest = TRUE)#[c(3, 20, 23, 24)]
+pred.rg <- predict(rg, dat = prueba)
+COR=cor(prueba$soc, pred.rg[[3]])^2
+if(COR>0.6){
+print(COR)
+l=list(rg, entrenamiento, prueba)
+saveRDS(l, file='bestRG.rds')
+print(i)
+}
+}
+
+
+
+res[i,1]=cor(prueba$soc, pred.rg[[3]])^2
+res[i,2]=rmse(exp(prueba$soc), exp(pred.rg[[3]]))
+pred.rg <- predict(rg, dat = c)
+r=data.frame(c[,1:2], pred.rg[[3]])
+coordinates(r)=~X+Y
+gridded(r)=T
+r=raster(r)
+preds=stack(preds,r)
+}
+CronometroOFF()
+#
+
+median_rg=exp(calc(preds[[3:502]], median))
+sd_rg=exp(calc(preds[[3:502]], sd))
+levelplot(median_rg,par.settings = myTheme, maxpixels=1e+06)
+x11()
+levelplot(sd_rg,par.settings = myTheme, maxpixels=1e+06)
+writeRaster(median_rg, file='Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\randomForests\\medianN70perc_500_twiEviTemp_ranger.tif')
+writeRaster(sd_rg, file='Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\randomForests\\sdN70perc_500_twiEviTemp_ranger.tif')
+l=list()
+l[[1]]=rg
+l[[2]]=res
+saveRDS(l, 'Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\randomForests\\valN70perc_500_twiEviTemp_ranger.rds')
+
+
+
+
+
+CronometroON()
+rf<- randomForest(soc ~ ., data = entrenamiento, ntree=500)
+pred.rf <- predict(rf, prueba)
+cor(prueba$soc, pred.rf)^2
+CronometroOFF()
+#
+

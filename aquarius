@@ -1,0 +1,60 @@
+
+require("rgdal")
+require("rgeos")
+require("dplyr")
+geop1=readRDS('USA_adm2.rds')
+#plot(geop1)
+geop2 <- gUnaryUnion(geop1, id = geop1@data$NAME_1)
+
+library(raster)
+library(rgdal)
+
+dat=read.table('aq2011_2015.txt', sep='\t', header=TRUE)
+dat[dat==-32767]=NA
+dat=dat[complete.cases(dat),]
+coordinates(dat)=~X+Y
+gridded(dat)=TRUE
+
+s=stack(dat)
+
+extent(s) <- extent(c(-180, 180, -90, 90))
+
+
+proj4string(s)<-crs(" +proj=longlat +datum=WGS84 ")
+
+
+names(s)[[1]]<-'aq2011'
+names(s)[[2]]<-'aq2012'
+names(s)[[3]]<-'aq2013'
+names(s)[[4]]<-'aq2014'
+names(s)[[5]]<-'aq2015'
+s
+levelplot(s)
+
+plot(s[[1]])
+zoom(s[[1]])
+e=drawExtent()
+e=as(e, 'SpatialPolygons')
+cr=crop(s, e)
+cr=mask(s, geop2)
+
+
+geop3 <- spTransform(geop2,CRS=CRS("+proj=eqc +lon_0="))
+
+
+
+
+s=cr
+s[is.na(s)==TRUE]=0
+#s[s==-32767]=0
+time <- 1:nlayers(s)
+     fun <- function(x) { lm(x ~ time)$coefficients[2] }
+     x1 <- calc(s, fun)
+
+p <- levelplot(x1, main='',margin = list(FUN = 'median'),scales=list(x=list(cex=1), y=list(cex=1)))#+layer(sp.lines(mx, lwd=0.8, col='black'))
+diverge0(p, ramp='RdBu')
+
+
+fun=function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[8] }}
+p1 <- calc(s, fun=fun)
+

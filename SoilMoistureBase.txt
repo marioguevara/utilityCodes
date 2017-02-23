@@ -1,0 +1,213 @@
+diverge0 <- function(p, ramp) {
+  # p: a trellis object resulting from rasterVis::levelplot
+  # ramp: the name of an RColorBrewer palette (as character), a character 
+  #       vector of colour names to interpolate, or a colorRampPalette.
+  require(RColorBrewer)
+  require(rasterVis)
+  if(length(ramp)==1 && is.character(ramp) && ramp %in% 
+     row.names(brewer.pal.info)) {
+    ramp <- suppressWarnings(colorRampPalette(brewer.pal(11, ramp)))
+  } else if(length(ramp) > 1 && is.character(ramp) && all(ramp %in% colors())) {
+    ramp <- colorRampPalette(ramp)
+  } else if(!is.function(ramp)) 
+    stop('ramp should be either the name of a RColorBrewer palette, ', 
+         'a vector of colours to be interpolated, or a colorRampPalette.')
+  rng <- range(p$legend[[1]]$args$key$at)
+  s <- seq(-max(abs(rng)), max(abs(rng)), len=1001)
+  i <- findInterval(rng[which.min(abs(rng))], s)
+  zlim <- switch(which.min(abs(rng)), `1`=i:(1000+1), `2`=1:(i+1))
+  p$legend[[1]]$args$key$at <- s[zlim]
+  p$par.settings$regions$col <- ramp(1000)[zlim[-length(zlim)]]
+  p
+}
+
+library(raster)
+s=stack(list.files()[2:37], bands=4)#
+plot(s[[1]])
+e=drawExtent()
+e=as(e, 'SpatialPolygons')
+m=crop(s,e)
+m=mask(m, e)
+require("rgdal")
+require("rgeos")
+require("dplyr")
+#us=readRDS('USA_adm2.rds')
+#usa <- gUnaryUnion(us, id = us@data$NAME_1)
+
+m=crop(m,usa)
+m=mask(m, usa)
+
+f1 <- function(x) calc(x, mean)
+beginCluster(4)
+x <- clusterR(m, f1)
+endCluster()
+
+
+
+#mag5=aggregate(m, 5, mean)
+
+lmp <- function (modelobject) {
+	if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+	f <- summary(modelobject)$fstatistic
+	p <- pf(f[1],f[2],f[3],lower.tail=F)
+	attributes(p) <- NULL
+	return(p)
+}
+
+fun2 <- function(x) { 
+#print(class(x))
+#print(x)
+if(length(na.omit(x))>1){
+time <-1:length(x)
+#print(x)
+l<-lm(x ~ time)
+r<-l$coefficients[2]
+p<-lmp(l)
+rr<-c(r,p)
+#rr<-r
+} else{rr<-c(NA,NA)}
+#} else{rr<-NA}
+return(rr)
+}
+
+delta1 <- calc(m[[2:34]], fun2)
+delta2 <- calc(m[[2:36]], fun2)
+delta <- calc(m[[14:36]], fun2)
+
+
+
+
+p05=as.data.frame(delta[[2]], xy=TRUE)
+p05=p05[p05$layer<0.05,]
+p05<-p05[complete.cases(p05),]
+coordinates(p05)=~x+y
+p05<-as(p05, 'SpatialPixelsDataFrame')
+p05=raster(p05)
+
+t05=crop(delta[[1]], p05)
+t05=mask(t05, p05)
+writeRaster(t05, file='trendSoilMoisture_1979_2013.tif')
+#writeRaster(t05, file='trendSoilMoisture_1979_2013.tif')
+#writeRaster(t05, file='trendSoilMoisture_1979_2011.tif')
+
+require("rgdal")
+require("rgeos")
+require("dplyr")
+us=readRDS('USA_adm2.rds')
+usa <- gUnaryUnion(us, id = us@data$NAME_1)
+
+
+#t05=raster('trendSoilMoisture_1978_2013.tif')
+
+
+t05=r
+
+r.min = cellStats(t05, "min")
+  r.max = cellStats(t05, "max")
+
+r.scale <- ((t05 - r.min) / (r.max - r.min) - 0.5 ) * 2
+
+p <- levelplot(delta[[1]], main='',margin = list(FUN = 'median'),scales=list(x=list(cex=1), y=list(cex=1)))+layer(sp.lines(usa, lwd=0.8, col='black'))
+diverge0(p, ramp='RdBu')
+
+X=calc(r.scale[[15:36]], mean)
+SISmm=stack(SISmm, X)
+xyplot(X2012+X2013~layer|cut(x, 4), data = SISmm, auto.key = list(space='right'))
+
+plot(, col=colorRampPalette(c("red", "white", "blue"))(255))
+#plot(s[[2]], zlim=c(0.05, 1), col='gray80', add=T, legend=FALSE)
+plot(usa, add=T)
+
+
+plot(r.scale*100, col=brewer.pal(n=10, name="RdBu"), zlim=c(-1,1))
+
+plot(r.scale, col=brewer.pal(n=10, name="RdBu"), zlim=c(-1,1))
+
+shape2 <- readOGR(dsn = ".", layer = "selectionINVERTED_CLUSTERofNASMD_GLOBAL")
+shape <- readOGR(dsn = ".", layer = "selectionCLUSTERofNASMD_GLOBAL")
+plot(shape)
+ plot(shape2)
+ global2=as.data.frame(shape2)
+ global=as.data.frame(shape)
+ xxx2=global2 %>% group_by(Y) %>% summarise_each(funs(mean))
+ xxx=global %>% group_by(Y) %>% summarise_each(funs(mean))
+(xxx$Date=seq(as.Date("1996/1/1"), as.Date("2012/1/1"), "years"))
+str(xxx)
+
+xxx=data.frame(date=xxx$Date, depth_5=xxx$RS_SM)
+
+(xxx2$Date=seq(as.Date("1996/1/1"), as.Date("2013/1/1"), "years"))
+str(xxx2)
+
+xxx2=data.frame(date=xxx2$Date, depth_5=xxx2$RS_SM)
+
+TheilSen(xxx, pollutant = "depth_5", autocor=TRUE,lab.cex= 1.5, slope.percent=TRUE,avg.time='year', ylim=c(0.10,0.35), text.col = "blue",
+ scales=list(tck=c(1,0), x=list(cex=1.2), y=list(cex=1.5)))
+x11()
+TheilSen(xxx2, pollutant = "depth_5", autocor=TRUE,lab.cex= 1.5, slope.percent=TRUE,avg.time='year', ylim=c(0.10,0.35), text.col = "red",
+ scales=list(tck=c(1,0), x=list(cex=1.2), y=list(cex=1.5)))
+
+
+
+
+names(m)
+
+trend=raster("slope_p_SMlm2_34.tif" )
+r=resample(trend, m)
+mtrend=mask(m,  r)
+
+mtrend=m
+( x.stats <- data.frame(x.sum=cellStats(mtrend, "sum", na.rm=TRUE)) )
+
+(x.stats$Date=seq(as.Date("1996/1/1"), as.Date("2012/1/1"), "years"))
+str(x.stats)
+
+xx=data.frame(date=x.stats$Date,Sum=x.stats$x.sum)
+
+ TheilSen(xx[2:34,], pollutant = "Sum", autocor=TRUE,lab.cex= 1.5, slope.percent=TRUE,avg.time='year')
+
+TheilSen(xxx, pollutant = "Sum", autocor=TRUE,lab.cex= 1.5, slope.percent=TRUE,avg.time='year')
+
+
+
+
+
+
+
+
+
+
+
+
+library(parallel)
+beginCluster()
+cl <- getCluster()
+clusterExport(cl, list("fun2", "lmp"))
+z2 <- calc(m, fun=function(x){ parApply(cl, x, 1, FUN=fun2)} )##calc
+#save(z2, file="trend.RData")
+returnCluster()
+endCluster()
+
+
+
+
+
+
+
+library(zoo)
+library(openair)
+global$Date <- as.yearmon(paste(global$Y, global$M), "%Y %m")
+global$Date <- as.Date(global$Date)
+
+
+mydata=data.frame(date=global$Date, soilMoisture05cm=global$depth_5)
+sen=TheilSen(mydata, pollutant = "soilMoisture05cm", autocor=TRUE, slope.percent=TRUE,avg.time='year',lab.cex= 1.5,  las=2)
+x11()
+mydata=data.frame(date=global$Date, soilMoisture1km=global$RS_SM)
+sen2=TheilSen(mydata, pollutant = "soilMoisture1km", autocor=TRUE, slope.percent=TRUE,avg.time='year',lab.cex= 1.5,  las=2)
+
+
+
+
+
+

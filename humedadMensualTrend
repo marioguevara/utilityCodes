@@ -1,0 +1,122 @@
+DATJan=DAT[[grep('_01', names(DAT))]]
+DATFeb=DAT[[grep('_02', names(DAT))]]
+DATMar=DAT[[grep('_03', names(DAT))]]
+DATApr=DAT[[grep('_04', names(DAT))]]
+DATMay=DAT[[grep('_05', names(DAT))]]
+DATJun=DAT[[grep('_06', names(DAT))]]
+DATJul=DAT[[grep('_07', names(DAT))]]
+DATAgo=DAT[[grep('_08', names(DAT))]]
+DATSep=DAT[[grep('_09', names(DAT))]]
+DATOct=DAT[[grep('_10', names(DAT))]]
+DATNov=DAT[[grep('_11', names(DAT))]]
+DATDec=DAT[[grep('_12', names(DAT))]]
+
+#par(mfrow=c(3,4))
+
+for (i in 1:length(l)){
+sm=cellStats(DAT[[i]], mean)
+d=length(sm)
+print(d)
+plot(1991:2013, sm, col='white')
+lines(1991:2013, sm)
+t=1991:2013
+abline(lm(sm~t))
+}
+
+( x.stats <- data.frame(x.sum=cellStats(s, "mean", na.rm=TRUE)) )
+
+x.stats$Date=seq(as.Date("1991-01-01"), as.Date("2013-12-01"), by="months")
+
+ xx=data.frame(date=x.stats$Date,x=x.stats$x.sum)
+ TheilSen(xx, pollutant = "x", autocor=TRUE,lab.cex= 1.5,dec.place = 5, slope.percent=TRUE,avg.time='month')
+
+
+gr=grep('_12_',row.names(x.stats))
+ XX=xx[gr,]
+ TheilSen(XX, pollutant = "x", autocor=TRUE,lab.cex= 1.5, dec.place = 5,slope.percent=TRUE,avg.time='year')
+
+
+
+
+n=c('DATJan','DATFeb','DATMar','DATApr','DATMay','DATJun','DATJul',
+'DATAgo','DATSep','DATOct','DATNov', 'DATDec')
+
+
+l=list(DATJan,DATFeb,DATMar,DATApr,DATMay,DATJun,DATJul,DATAgo,DATSep,DATOct,DATNov, DATDec)
+
+n=c('Jan','Feb','Mar','Apr','May','Jun','Jul','Ago','Sep','Oct','Nov', 'Dec')
+
+for (i in 1:12){
+ beginCluster(4)
+ x <- clusterR(l[[i]], mean, verbose=T)
+ writeRaster(x, file=paste(n[i],'_sm_Mean_27km_9113.tif', sep=''))
+ endCluster()
+ print(n[i])
+}
+
+
+time=1991:2013
+i=1
+xx=DAT[[grep(time[i],names(DAT) )]]
+xx=calc(xx, max)
+
+for ( i in 2:length(time)){
+x=DAT[[grep(time[i],names(DAT) )]]
+x=calc(x, max)
+xx=stack(xx, x)
+}
+
+
+
+
+
+
+fun3 <- function(x) {
+library(mblm)
+if(length(na.omit(x))>1){
+#print(x)
+#print(class(x))
+x<-x[!is.na(x)]
+time <-1:length(x)
+l<-mblm(x ~ time)
+r<-l$coefficients[2]
+p<-summary(l)$coefficients[2,4]
+rr<-c(r,p)
+#rr<-r
+} else{rr<-c(NA,NA)}
+#} else{rr<-NA}
+return(rr)}
+
+for (i in 1:12){
+delta <- calc(l[[i]], fun3)
+writeRaster(delta, file=paste('/home/mario/work/SoilMoisture/011_humedadMensual/',n[i], '_MBLM_trend_pval_sm_5km_9113.tif', sep=''))
+print(n[i])
+}
+
+
+
+
+
+s=stack(lis, bands=1)
+#s[s>0]=NA
+
+
+p=stack(lis, bands=2)
+
+p[p>0.05]=NA
+
+s=stack(s[[5]],s[[4]],s[[8]],s[[2]],s[[9]],s[[7]],s[[6]],s[[1]],s[[12]],s[[11]],s[[10]],s[[3]])
+
+
+#
+p=stack(p[[5]],p[[4]],p[[8]],p[[2]],p[[9]],p[[7]],p[[6]],p[[1]],p[[12]],p[[11]],p[[10]],p[[3]])
+
+
+
+ 
+ gr=grep('_12_',row.names(x.stats))
+ XX=xx[gr,]
+ TheilSen(XX, pollutant = "x", autocor=TRUE,lab.cex= 1.5, slope.percent=TRUE,avg.time='year')
+
+
+_

@@ -1,0 +1,54 @@
+
+dat=read.table('/run/user/1000/gvfs/smb-share:server=bigdata1.anr.udel.edu,share=vargas/Mario_Guevara/002_Reporte semanal/SOIL_ORGANIC_CARBON/back/inputdataUSA/train_name.txt', sep='\t', header=T)
+
+dat1=data.frame(dat[,1:2], soc=dat[,20], top=dat[,17], bot=dat[,18], dat[,28:51], site=dat$site_name, id=dat$profile_nam, tax=dat$soil_taxon) 
+
+dat1$soc[dat1$soc<0]=NA
+ dat1$soc[dat1$soc==0]=0.00001
+dat1$soc[dat1$soc>5]=NA
+dat1=na.omit(dat1)
+summary(dat1$soc)
+
+     ## list columns of interest:
+     s.lst <- c("id", "tax",  "X", "Y")
+     
+     depths(dat1) <- id ~ top + bot
+     site(dat1) <- as.formula(paste("~", paste(s.lst[-1], collapse="+"), sep=""))
+     coordinates(dat1) <- ~X+Y
+
+proj4string(dat1)<-crs("+proj=longlat +ellps=WGS84")
+  
+try( m <- mpspline(dat1, 'soc') )
+
+dat.sp <- as(dat1, 'SpatialPointsDataFrame')
+
+df=cbind(x=dat.sp$X, y=dat.sp$Y, m$var.std)
+
+str(df)
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,52 @@
+par(mfrow=c(3,4))
+
+m1=global[global$M==1,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Jan', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==2,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Feb', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==3,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Mar', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==4,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Apr', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==5,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='May', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==6,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Jun', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==7,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Jul', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==8,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Ago', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==9,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5, main='Sep', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==10,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5,main='Oct', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==11,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5,main='Nov', cex.lab=1.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+m1=global[global$M==12,] 
+boxplot(m1$depth_5~as.factor(round(m1$Y)), las=2, ylim=c(0,0.6), col='blue', cex.axis=1.5,main='Dic', cex.lab=2.5)
+abline(h=mean(m1$depth), col='red', lwd=1.5)
+abline(h=median(m1$depth), col='black', lwd=1.5)
+
+

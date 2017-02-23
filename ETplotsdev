@@ -1,0 +1,155 @@
+
+
+
+    error.bar <- function(x, y, upper, lower=upper, length=0.1,...){
+    if(length(x) != length(y) | length(y) !=length(lower) | length(lower) != length(upper))
+    stop("vectors must be same length")
+    arrows(x,y+upper, x, y-lower, angle=90, code=3, length=length, ...)
+    }
+
+
+
+write.table(df, file='etGroupsPTSm.txt', sep='\t', col.names=TRUE, row.names=FALSE)
+
+df=read.table("etGroupsPTSm.txt" , sep='\t', header=TRUE)
+ df$ET=df$mblmTrendPvalET.1
+ df[df$ET>1000,]=NA
+ df=na.omit(df)
+df$et = (df$ET-min(df$ET))/(max(df$ET)-min(df$ET))
+df$sm = (df$TRENDsm-min(df$TRENDsm))/(max(df$TRENDsm)-min(df$TRENDsm))
+
+library(dplyr)
+X=df %>% group_by(gru) %>% summarise_each(funs(mean))
+SD=df %>% group_by(gru) %>% summarise_each(funs(sd))
+
+y.means <- X$ET
+y.sd <- SD$ET
+y.means1 <-X$TRENDsm
+y.sd1 <- SD$TRENDsm
+
+y.means <- X$et
+y.sd <- SD$et
+y.means1 <-X$sm
+y.sd1 <- SD$sm
+
+yy <- matrix(c(y.means,y.means1),2,8,byrow=TRUE)
+ee <- matrix(c(y.sd,y.sd1),2,8,byrow=TRUE)*1.96/10
+
+barx <- barplot(y.means, names.arg=1:8,col="blue", axis.lty=1, axis=FALSE, xlab="groups", ylab="")
+error.bar(barx,y.means, y.sd)
+
+barx <- barplot(y.means1, names.arg=1:8,col="blue", axis.lty=1, axis=FALSE, xlab="groups", ylab="")
+error.bar(barx,y.means1, y.sd1)
+
+barx <- barplot(yy, beside=TRUE,col=c("black","gray"), ylim=c(0,0.8),
+names.arg=X$gru, axis.lty=1, xlab="Groups", ylab="Normalized values (0-1)")
+error.bar(barx,yy,ee, col='darkgray')
+
+legend("topleft", bty='n',
+       legend = c("Evapotranspiration", "Soil moisture"), 
+       fill = c("black", "gray"))
+
+
+
+
+
+test <- data.frame(group = df$gru, var.a = df$sm, mean = 500, sd = 20),
+  var.b = runif(10))
+
+funProp <- function(testCol) {
+    test[, testCol]/max(test[, testCol])
+}
+
+test$var.a.prop <- funProp("var.a")
+test$var.b.prop <- funProp("var.b")
+
+barplot(t(as.matrix(test[, c("var.a.prop", "var.b.prop")])), beside = TRUE,
+  yaxt = "n", names.arg = test$group)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+avg=X$mblmTrendPvalET.1
+sdev=SD$mblmTrendPvalET.1
+x=1:8
+plot(x, avg,
+    ylim=range(c(avg-sdev, avg+sdev)), xlab="GROUPS", ylab="Mean +/- SD",
+    main=" ", axes=FALSE, cex.lab=1.5,
+)
+# hack: we draw arrows but with very special "arrowheads"
+arrows(x, avg-sdev, x, avg+sdev, length=0.25, angle=90, code=3)
+
+axis(2, at=x,labels=X$gru, col.axis="black", las=2, cex=1.5)
+axis(2)
+abline(h=0, lty=2, cex=1.5)
+
+#x=df$TRENDsm
+#df$tsm=rescale(x, to = c(0, 1), from = range(x, na.rm = TRUE, finite = TRUE))
+#x=df$mblmTrendPvalET.1
+#df$tet=rescale(x, to = c(0, 1), from = range(x, na.rm = TRUE, finite = TRUE))
+#mn=df %>% group_by(gru) %>% summarise_each(funs(mean))
+
+par(mar=c(5, 12, 4, 4) + 0.1)
+time=1:8
+pop=avg
+
+plot(time, pop, axes=F, ylim=c(0,1), xlab='', ylab='',type='l',col='black', main='')
+points(time,pop,pch=20,col='black')
+axis(2, ylim=c(0,max(pop)),col='black',lwd=2)
+mtext(2,text='ET',line=2)
+
+med=mn$tsm
+par(new=T)
+
+plot(time, med, axes=F, ylim=c(0,1), xlab='', ylab='', 
+type='l',lty=2, main='',lwd=2)
+axis(2, ylim=c(0,max(med)),lwd=2,line=3.5)
+points(time, med,pch=20)
+mtext(2,text='SM',line=5.5)
+
+par(new=T)
+plot(time, grp, axes=F, ylim=c(0,max(grp)), xlab='', ylab='', 
+type='l',lty=3, main='',xlim=c(7000,3400),lwd=2)
+axis(2, ylim=c(0,max(grp)),lwd=2,line=7)
+
+points(time, grp,pch=20)
+mtext(2,text='Number of Groups',line=9)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+avg=mn$mblmTrendPvalET.1
+sdev=mx$mblmTrendPvalET.1
+
+avg1=mn$TRENDsm
+sdev1=mx$TRENDsm
+
+m=matrix(c(avg1, sdev1))

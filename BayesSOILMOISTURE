@@ -1,0 +1,123 @@
+library(raster)
+s=stack('sm_P_t_trendsm.tif')
+
+names(s)[2]<-'P'
+ names(s)[3]<-'T'
+  names(s)[1]<-'sm'
+    names(s)[4]<-'TRENDsm'
+
+
+s=mask(s, s[[4]])
+
+z=s	
+
+        s$P[s$P<=cellStats(z$P, mean)]= 1
+	s$P[s$P!=1]= 2
+#s$P[s$P>=cellStats(z$P, mean)]= 2
+	s$T[s$T<=cellStats(z$T, mean)]= 1
+	s$T[s$T!=1]= 2
+#s$T[s$T>=cellStats(z$T, mean)]= 2
+	#s$sm[s$sm<=cellStats(z$sm, mean)]= 1
+	#s$sm[s$sm!=1]= 2
+#s$sm[s$sm>=cellStats(z$sm, mean)]= 2
+
+df=na.omit(as.data.frame(s, xy=TRUE))
+
+#df$group=paste(as.character(df$P), as.character(df$T), as.character(df$sm), sep='')
+
+df$group=paste(as.character(df$P), as.character(df$T), sep='')
+
+
+dfsp=df
+ coordinates(dfsp)=~x+y
+ e=extract(z, dfsp )
+ d=data.frame(e, df[,1:2], groupdf$group)
+ head(d)
+
+g1=d[d$df.group=='111',]
+g2=d[d$df.group=='112',]
+g3=d[d$df.group=='121',]
+g4=d[d$df.group=='122',]
+g5=d[d$df.group=='211',]
+g6=d[d$df.group=='221',]
+g7=d[d$df.group=='212',]
+g8=d[d$df.group=='222',]
+
+g1=data.frame(scale(g1[1:3]), Trend=g1$TRENDsm)
+library(rethinking)
+
+
+d=read.table('GROUPS.txt', sep='\t', header=TRUE)
+
+d=d[d$TRENDsm<0,]
+
+
+d=d[d$df.group=='222',]
+
+
+
+m=glimmer(Trend~., dd)
+
+dd=data.frame(scale(d[-c(5,6,7)])
+
+m=map2stan(alist(
+    TRENDsm ~ dnorm( mu , sigma ),
+    mu <- Intercept +
+        b_P*P +
+        b_T*T +
+        b_sm*sm,
+    Intercept ~ dnorm(0,10),
+    b_P ~ dnorm(0,10),
+    b_T ~ dnorm(0,10),
+    b_sm ~ dnorm(0,10),
+    sigma ~ dcauchy(0,2)
+), data=d[-c(5,6,7)], WAIC=TRUE, chains=1, cores=2)
+
+
+
+
+
+
+
+
+f1 <- function(x) calc(x, mean)
+beginCluster()
+XsmNeg <- clusterR(smNeg, f1)
+endCluster()
+
+beginCluster()
+XsmPos <- clusterR(smPos, f1)
+endCluster()
+
+beginCluster()
+XsmPos <- clusterR(smPos, f1)
+endCluster()
+
+
+beginCluster()
+Xprec <- clusterR(s, f1)
+endCluster()
+
+beginCluster()
+Xtemp <- clusterR(s, f1)
+endCluster()
+
+beginCluster()
+Xsm <- clusterR(s, f1)
+endCluster()
+
+f2 <- function(x) calc(x, max)
+s=stack( "stackedSM1km_78_13.tif" )
+names(s)
+z=s[[14:36]]
+beginCluster()
+Maxsm <- clusterR(z, f2)
+endCluster()
+
+usa <- spTransform(usa, CRS=CRS("+proj=lcc +lat_1=25 +lat_2=60 +lat_0=42.5 +lon_0=-100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+
+r.scaleNeg<- ((negres - min(smNeg)) / (max(smNeg) -  min(smNeg)) - 0.5 ) * 2
+
+r.scalePos <- ((posres - min(smNeg)) / (max(smNeg) -  min(smNeg)) - 0.5 ) * 2
+

@@ -1,0 +1,804 @@
+#Prepared By Mario Guevara 
+#University of Delaware
+#Comision Nacional para el Conocimiento y Uso de la Biodiversidad
+
+R -q --no-save
+
+#Directorio de trabajo y librerias
+
+#install.packages(c('dichromat','DAAG', 'Metrics', 'car', 'leaps',
+ 'RSAGA', 'GSIF', 'plotKML',  'FactoMineR', 'aqp, 'Hmisc', ''))
+
+rm(list=ls())
+
+###benchmark tool
+
+CronometroON<- function(){
+      tic<-proc.time()[3]
+      assign(".tic", tic, envir=baseenv())
+      invisible(tic)
+      }
+CronometroOFF<- function(){
+      tic <- get(".tic", envir=baseenv())
+      toc<-proc.time()[3]-tic
+      hrs<-as.integer(toc/3600)
+      minu<- as.integer(((toc/3600)-hrs)*60)
+      seg<- ((((((toc/3600)-hrs)*60)))-minu)*60
+      time<-paste(as.character(hrs),"hrs ",as.character(minu),"min ",as.character(round(seg,digit=2)),"seg",sep="")
+      return(time)
+      }
+
+##
+##diverge plotting function
+##
+
+diverge0 <- function(p, ramp) {
+  # p: a trellis object resulting from rasterVis::levelplot
+  # ramp: the name of an RColorBrewer palette (as character), a character 
+  #       vector of colour names to interpolate, or a colorRampPalette.
+  require(RColorBrewer)
+  require(rasterVis)
+  if(length(ramp)==1 && is.character(ramp) && ramp %in% 
+     row.names(brewer.pal.info)) {
+    ramp <- suppressWarnings(colorRampPalette(brewer.pal(11, ramp)))
+  } else if(length(ramp) > 1 && is.character(ramp) && all(ramp %in% colors())) {
+    ramp <- colorRampPalette(ramp)
+  } else if(!is.function(ramp)) 
+    stop('ramp should be either the name of a RColorBrewer palette, ', 
+         'a vector of colours to be interpolated, or a colorRampPalette.')
+  rng <- range(p$legend[[1]]$args$key$at)
+  s <- seq(-max(abs(rng)), max(abs(rng)), len=1001)
+  i <- findInterval(rng[which.min(abs(rng))], s)
+  zlim <- switch(which.min(abs(rng)), `1`=i:(1000+1), `2`=1:(i+1))
+  p$legend[[1]]$args$key$at <- s[zlim]
+  p$par.settings$regions$col <- ramp(1000)[zlim[-length(zlim)]]
+  p
+}
+
+
+CronometroON()
+library(sp)
+library(boot)
+library(aqp)
+library(plyr)
+library(rpart)
+library(splines)
+library(gstat)
+library(randomForest)
+library(quantregForest)
+library(plotKML)
+
+library(dichromat)
+library(DAAG)
+library(Metrics)
+library(car)
+library(leaps)
+library(rgdal)
+library(raster)
+library(RSAGA)
+library(GSIF)
+library(plotKML)
+library(automap)
+library(FactoMineR)
+library(rasterVis)
+
+
+###
+###Rule of thumb
+###Ask questions, 
+###?readOGR 
+
+
+####FIELD DATA
+####
+###Importa y visualiza shapefile con datos de perfiles de INEGI http://www.inegi.org.mx/geo/contenidos/recnat/edafologia/vectorial_serieii.aspx
+
+shape <- readOGR(dsn = ".", layer = "edaf_puntos_sii")
+	class(shape)
+	dim(shape)
+	names(shape)
+	head(shape)
+	shape[1:100,]
+	shape
+	
+	str(shape)
+
+proj4string(shape)<-crs('+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs')# http://spatialreference.org/ref/sr-org/39/proj4/
+	
+	plot(shape)
+
+library(aqp)
+#library(Hmisc)
+library(lattice)
+library(MASS)
+
+sp2=as.data.frame(shape)
+
+sp3=data.frame(id=as.character(sp2$ID_PERFIL), name=sp2$NOMEN_HTE, top=sp2$LIM_SUP, bottom=sp2$LIM_INF,clay=sp2$R, co=sp2$CO, x=sp2$COORD_X, y=sp2$COORD_Y, wrb=sp2$CLAVE_WRB) 
+
+sp3[sp3$co==0,]=NA
+sp3=sp3[complete.cases(sp3),] 
+
+library(ggplot2)
+ qplot(data = sp3, x = x, y = y,  color = clay)
+ qplot(data = sp3, x = x, y = y,  color = co) 
+ summary(sp3)
+
+	qplot(data = sp3, x = x, y = y,  color = co) + scale_colour_gradient(limits=c(0, 42), low="white", high='darkgreen')
+ 
+	qplot(data = sp3, x = x, y = y,  color = log(co)) 
+
+
+boxplot(sp3$co~sp3$name, col='gray', las=2)
+ par(mar=c(9,4.1,4.1,2.1))
+ boxplot(log(sp3$co)~sp3$name, col='gray', las=2)
+ 
+#png(filename="your/file/location/name.png")
+#plot()
+#dev.off()
+
+sp4=sp3
+
+#depths(sp4) <- id ~ top + bottom
+     site(sp4) <- ~ x + y + wrb 
+     coordinates(sp4) <- ~ x + y
+    proj4string(sp4)<-crs('+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+
+
+
+
+#depths(sp4) <- id ~ top + bottom
+#agg <- slab(sp4, fm= ~ + clay + co)
+
+xyplot(top ~ p.q50 | variable, data=agg, ylab='Depth',
+             xlab='median bounded by 25th and 75th percentiles',
+             lower=agg$p.q25, upper=agg$p.q75, ylim=c(200,-2),
+             panel=panel.depth_function,
+             alpha=0.25, sync.colors=TRUE,
+             par.settings=list(superpose.line=list(col='RoyalBlue', lwd=2)),
+             prepanel=prepanel.depth_function,
+             cf=agg$contributing_fraction, cf.col='black', cf.interval=5, 
+             layout=c(2,1), strip=strip.custom(bg=grey(0.8)),
+             scales=list(x=list(tick.number=4, alternating=3, relation='free'))
+             )
+
+coordinates(sp3)=~x+y
+proj4string(sp3)<-crs('+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+
+#plotKML(sp3['co'])
+
+
+
+#plotKML(sp3['clay'])
+
+
+
+x=spTransform(sp3, "+proj=longlat +ellps=WGS84")
+#KML(x, 'inegi_co_clay_data', overwrite=TRUE)
+
+
+CronometroOFF()
+
+CronometroON()
+
+#####THE COVARIATE SPACE
+####Importar datos de elevacion y definir area de trabajo
+#dem=raster( "dem90mINEGI.tif" )
+#writeRaster(demx100, file='demx100.tif')
+#demx100=aggregate(dem,100, mean)
+
+demx100=raster('demx100.tif')
+
+require("rgdal")
+require("rgeos")
+require("dplyr")
+mx=readRDS('MEX_adm2.rds')
+#plot(mx)
+mxEst <- gUnaryUnion(mx, id = mx@data$NAME_1)
+
+#demx100
+#plot(demx100)
+#zoom(demx100)
+#plot(x, add=TRUE)
+#plot(mxEst, add=TRUE)
+#plot(mx, add=TRUE, lty=2, lwd=0.5)
+#e=drawExtent()
+#e=as(e, 'SpatialPolygons')
+
+for(i in 1:32){
+
+dem=raster("dem90mINEGI.tif")
+
+e=mxEst[i]
+dem=crop(dem,e)
+
+e2=as(e, 'SpatialPolygons')
+e2=spTransform(e2, CRS='+proj=longlat +ellps=GRS80 +no_defs')
+dem=mask(dem,e2)
+
+beginCluster(4)
+slope <- clusterR(dem, terrain, args=list(opt='slope'))
+aspect <- clusterR(dem, terrain, args=list(opt='aspect'))
+tpi <- clusterR(dem, terrain, args=list(opt='TPI'))
+tri <- clusterR(dem, terrain, args=list(opt='TRI'))
+flow <- clusterR(dem, terrain, args=list(opt='flowdir'))
+
+hill <- hillShade(slope, aspect, 40, 270)
+
+s1=stack(dem, slope, aspect, tpi, tri, flow, hill)
+
+evi=raster('EVMMOD3a.tif')
+evi=crop(evi,e)
+evi=mask(evi,e)
+evi2<-resample(evi, dem, method='ngb')
+
+geo=raster('GEAISG3a.tif')
+geo=crop(geo,e)
+geo=mask(geo,e)
+geo2<-resample(geo, dem, method='ngb')
+
+#climatic variables have a different projection system
+
+t=raster('tmed_anual.tif')
+t
+
+proj4string(e)<-crs("+proj=longlat +ellps=WGS84")
+e2=spTransform(e, '+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+
+t=crop(t,e2)
+t=mask(t,e2)
+
+pac=raster('prec_anual_acumulada.tif')
+pac=crop(pac,e2)
+pac=mask(pac,e2)
+
+bh=raster('BalHid.tif')
+bh=crop(bh,e2)
+bh=mask(bh,e2)
+endCluster()
+bh2=resample(bh, t)
+s2=stack(t, pac, bh2)
+
+s2=projectRaster(s2, s1)
+geo2=projectRaster(geo2, s1, method='ngb')
+evi2=projectRaster(evi2, s1, method='ngb')
+COV=stack(s2, s1, evi2, geo2)
+
+names(COV)
+
+names(COV)[[1]]<-'Temperatura'
+names(COV)[[2]]<-'Precipitacion'
+names(COV)[[3]]<-'Balance hidrico'
+names(COV)[[4]]<-'Elevacion'
+names(COV)[[5]]<-'Pendiente'
+names(COV)[[6]]<-'Exposicion'
+names(COV)[[7]]<-'TPI'
+names(COV)[[8]]<-'TRI'
+names(COV)[[9]]<-'Flujo superficial'
+names(COV)[[10]]<-'Sombreado'
+names(COV)[[11]]<-'EVI'
+names(COV)[[12]]<-'Edad de rocas'
+
+COV.s=COV
+
+r.min = cellStats(COV.s, "min")
+r.max = cellStats(COV.s, "max")
+
+COV.s <- ((COV.s - r.min) / (r.max - r.min) - 0.5 ) * 2
+
+saveRDS(as(COV.s, 'SpatialPixelsDataFrame'), file=paste(names(mxEst[i]),'COV.rds',sep=''))
+}
+
+dir=list.files(pattern='COV.rds$')
+m <- readRDS(paste(dir[1], sep=''))
+ex=spTransform(sp3, projection(m))
+
+m2 <- readRDS(paste(dir[1], sep=''))
+m2=data.frame(m[1:1,], soc=1)
+m2=m2[-1,]
+
+
+for (i in 1:length(dir)){
+
+m <- readRDS(paste(dir[i], sep=''))
+ov=over(ex, m)
+
+ov$co=ex$co
+ov$x=ex$x
+ov$y=ex$y
+
+ov$id=ex$id
+ov$wrb=ex$wrb
+ov$name=ex$name
+ov$top=ex$top
+ov$bottom=ex$bottom
+ov$clay=ex$clay
+
+ov=ov[complete.cases(ov),]
+
+m2=rbind(m2, ov)
+}
+
+
+d=m2
+
+d$id=strtrim(d$id, 6)
+
+depths(d) <- id ~ top + bottom
+
+#coordinates(d) <- ~ x + y
+
+try( m <- mpspline(d, 'co') )
+
+coordinates(m2)=~x+y
+dat=remove.duplicates(m2)
+
+DAT=cbind(Y=m$var.std[,1],data.frame(dat)[,1:12],data.frame(dat)[,14:15] )
+DAT$Y[DAT$Y==0]=NA
+DAT=na.omit(DAT)
+DAT$Y=log(DAT$Y)
+
+for(i in 1:5000){
+positions <- sample(nrow(DAT),size=floor((nrow(dat)/4)*3))
+training<- DAT[positions,]
+testing<- DAT[-positions,]
+formulaString = as.formula(paste("Y ~ ", 
+paste(names(training[,2:13]), collapse="+")))
+model <- quantregForest(y=training$Y, x=training[,2:13], ntree=600, nthreads=4)
+testing$PRED=predict(model, testing, what=median)
+testing=na.omit(testing)
+COR=cor(testing$Y, predict(model, testing, what=median))
+#explainedVariance 0-5cm r2 0.52
+COR
+if(COR>0.45){
+l=list(model,training, test)
+saveRDS(l, file=paste('rf_', i, '.rds',sep=''))
+print(i)
+}
+
+DIR=substr(dir,1,nchar(dir)-7)
+
+for(i in 1:length (DIR)){
+
+m <- readRDS(paste(dir[i], sep=''))
+
+beginCluster(6)
+
+COV.s=stack(m)
+
+qRF<- clusterR(COV.s, predict, args=list(model=model,what=median))
+writeRaster(qRF, file=paste('COpercent_',DIR[i], '_0_5cm_depth_', 'medianQRF_90m','.tif', sep=''), overwrite=TRUE)
+endCluster()
+}
+
+
+beginCluster(4)
+qRF<- clusterR(COV.s, predict, args=list(model=model,what=sd))
+writeRaster(qRF, file=paste('depth_', i, 'uncertaintyQRFmichoacan90m','co_Percentage','.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+rfTuning <- tune.randomForest(formulaString, data = DAT,ntree=600, mtry=seq(from=2,to=12,by=1),
+                      tunecontrol= tune.control(sampling="cross",cross=10))
+
+
+rfvc <- errorest(formulaString, data=DAT,model = randomForest, ntree=600,
+               gamma=as.numeric(rfTuning$best.parameters[1]),
+                 , estimator="cv", est.para=control.errorest(k=10,random=TRUE,predictions=TRUE))
+
+RMSEcv <- rfvc$error
+
+CORcv <- cor(DAT$Y, rfvc$predictions)
+
+RMSEcv
+CORcv
+
+
+#p <- levelplot(COV.s, main='',margin = list(FUN = 'median'),scales=list(x=list(cex=1), y=list(cex=1)))##+ layer(sp.polygons(mx))
+#diverge0(p, ramp='RdBu')
+
+x11()
+
+plot(hill, col=gray.colors(100), legend=F)
+#plot(x, add=TRUE, col='blue')
+plot(mxEst, add=TRUE)
+plot(mx, add=TRUE, lty=2, lwd=0.5)
+
+e=extract(COV.s, x)
+dat=as.data.frame(x)
+dat=cbind(dat, e)
+dat=na.omit(dat)
+dat=dat[complete.cases(dat),]
+#cov=as.data.frame(COV.s, xy=TRUE)
+#cov=cov[complete.cases(cov),]
+dat$co[dat$co==0]=NA
+dat=na.omit(dat)
+d=dat
+coordinates(d)=~x+y
+plot(d, add=TRUE, lty=2, lwd=0.5)
+
+
+d=dat
+
+d$id=strtrim(d$id, 6)
+
+d=data.frame(id=as.integer(d$id), top=as.integer(d$top), bottom=as.integer(d$bot) , 
+name=as.factor(d$name), co=as.numeric(d$co), d[,8:9]  )
+
+
+depths(d) <- id ~ top + bottom
+
+#coordinates(d) <- ~ x + y
+
+try( m <- mpspline(d, 'co') )
+
+
+
+
+
+
+
+
+
+
+
+beginCluster()
+qRF<- clusterR(COV.s, predict, args=list(model=model,what=mean))
+writeRaster(qRF, file='ARCILLA_05_cm_meanQRFmichoacan90m.tif', overwrite=TRUE)
+endCluster()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+formulaString = as.formula(paste("Y ~ ", 
+paste(names(dat[,3:14]), collapse="+")))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(randomForest)
+model <- randomForest( formulaString, ntree=500, data=dat )
+beginCluster()
+RFclay<- clusterR(COV.s, predict, args=list(model=model,predict.all=TRUE))
+endCluster()
+
+pred.rf.int <- apply( pred.rf$individual, 1, function(x) {
+ c( mean(x) + c(-1,1)*sd(x), 
+ quantile(x, c(0.025,0.975)) )
+ })
+
+
+
+
+
+
+
+
+
+
+#str(cov)
+CronometroOFF()
+####
+###
+##
+#
+
+library(ggplot2)
+
+ggplot(dat, aes(x=reorder(name, co), y = co)) + 
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle=90)) + 
+  labs(x= 'Tipos de horizonte muestreados')+theme(axis.text=element_text(size=18),
+        axis.title=element_text(size=15,face="bold"))
+
+####
+###
+##l=list(dat, cov)
+#saveRDS(l, file='dat_cov.rds')
+
+####ALTO!!! VAS A TRONAR TU LAP
+###
+##3D mapping of soil carbon
+#
+names(dat)
+d=dat[c(1,3,4,6,9, 7,8)]
+coordinates(d) <- ~x+y
+proj4string(d) <- CRS("+proj=longlat +ellps=WGS84")
+d=spTransform(d, "+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0+datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+d=as.data.frame(d)
+depths(d) <- id ~ top + bottom
+s.lst <- c("id", "wrb", "x", "y")
+site(d) <- as.formula(paste("~", paste(s.lst[-1], collapse="+"), sep=""))
+coordinates(d) <- ~x+y
+
+proj4string(d) <- CRS("+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0+datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+d.geo <- as.geosamples(d)
+
+cov <- projectRaster(COV.s, crs="+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+cov=as.data.frame(cov, xy=TRUE)
+cov=cov[complete.cases(cov),]
+coordinates(cov)=~x+y
+gridded(cov)<-TRUE
+proj4string(cov) <- CRS("+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+glm.formulaString = as.formula(paste("co ~ ", 
+paste(names(cov), collapse="+"), "+ ns(altitude, df=4)"))
+glm.formulaString
+
+CO.m <- fit.gstatModel(observations=d.geo, glm.formulaString, 
+covariates=cov)
+
+new3D <- sp3D(cov)
+
+CO.rk.sd1 <- predict(CO.m, new3D[[1]])
+
+sd.l <- lapply(new3D, FUN=function(x){predict(CO.m, predictionLocations=x, nfold=10)}) #
+
+
+res=stack(sd.l[[1]]@predicted)[[1]]
+for(i in 2:6){
+res=stack(res, stack(sd.l[[i]]@predicted)[[1]])
+}
+
+unc=stack(sd.l[[1]]@predicted)[[2]]
+for(i in 2:6){
+unc=stack(unc, stack(sd.l[[i]]@predicted)[[2]])
+}
+
+levelplot(res)
+x11()
+levelplot(unc)
+
+CronometroOFF()
+####
+###
+##randomForest regression kriging
+#
+rf.formulaString = as.formula(paste("co ~ ", 
+paste(names(cov), collapse="+")))
+
+rf.formulaString
+
+CO.mrf <- fit.gstatModel(observations=d.geo, rf.formulaString, 
+covariates=cov, method='quantregForest')
+
+new3D <- sp3D(cov)
+
+#sd.lrf <- lapply(new3D, FUN=function(x){predict(CO.mrf, predictionLocations=x, nfold=10)}) #
+
+CO.rfrk.sd1 <- predict(CO.mrf, new3D[[1]])
+CO.rfrk.sd2 <- predict(CO.mrf, new3D[[2]])
+CO.rfrk.sd3 <- predict(CO.mrf, new3D[[3]])
+CO.rfrk.sd4 <- predict(CO.mrf, new3D[[4]])
+CO.rfrk.sd5 <- predict(CO.mrf, new3D[[5]])
+CO.rfrk.sd6 <- predict(CO.mrf, new3D[[6]])
+
+s1=stack(stack(CO.rfrk.sd1@predicted)[[1]],
+stack(CO.rfrk.sd2@predicted)[[1]],
+stack(CO.rfrk.sd3@predicted)[[1]],
+stack(CO.rfrk.sd4@predicted)[[1]],
+stack(CO.rfrk.sd5@predicted)[[1]],
+stack(CO.rfrk.sd6@predicted)[[1]])
+
+s2=stack(stack(CO.rfrk.sd1@predicted)[[2]],
+stack(CO.rfrk.sd2@predicted)[[2]],
+stack(CO.rfrk.sd3@predicted)[[2]],
+stack(CO.rfrk.sd4@predicted)[[2]],
+stack(CO.rfrk.sd5@predicted)[[2]],
+stack(CO.rfrk.sd6@predicted)[[2]])
+
+sds2=calc(s2, sd)
+
+
+
+s=s1
+s[is.na(s)==TRUE]=0
+time <- 1:nlayers(s)
+     fun <- function(x) { lm(x ~ time)$coefficients[2] }
+     x1 <- calc(s, fun)
+
+fun=function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[8] }}
+p1 <- calc(s, fun=fun)
+
+plot(x1, col=colorRampPalette(c("red", "white", "blue"))(255))
+#plot(p1, zlim=c(0.05, 1), col='gray80', add=T, legend=FALSE)
+#plot(mxEst, add=T)
+
+
+CronometroOFF()
+
+
+plotKML(sd.lrf)
+
+
+site(prof1) <- ~ lon + lat + name 
+     coordinates(prof1) <- ~ x + y
+     proj4string(prof1) <- CRS("+proj=longlat +datum=WGS84")
+
+plotKML(d.geo, var.name="co")
+
+
+levelplot(scale(stack(CO.rk.sd1@predicted)[[1]]), maxpixels=43930)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+p = get("cellsize", envir = GSIF.opts)[1]
+s = get("stdepths", envir = GSIF.opts)
+sd.ll <- sapply(1:length(sd.l), FUN=function(x){ 
+     make.3Dgrid(sd.l[[x]]@predicted,
+pixsize=p, stdepths=s[x])})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+COV.s=COV
+
+r.min = cellStats(COV.s, "min")
+r.max = cellStats(COV.s, "max")
+
+COV.s <- ((COV.s - r.min) / (r.max - r.min) - 0.5 ) * 2
+
+p <- levelplot(COV.s, main='',margin = list(FUN = 'median'),scales=list(x=list(cex=1), y=list(cex=1)))#+layer(sp.lines(mx, lwd=0.8, col='black'))
+diverge0(p, ramp='RdBu')
+
+
+
+
+## plot the results in Google Earth:
+plotKML(CO.rk.sd1, z.lim=c(5,85))
+
+
+
+
+
+pts=as.data.frame(sp3)
+str(pts)
+
+
+pts=pts[pts$top==0,]
+pts=pts[pts$bottom<=5,]
+pts=pts[,6:8]
+str(pts)
+
+xx=as.matrix(aggregate(pts[,2],by = list(pts[,1],pts[,2]),FUN = mean))
+
+#Descriptive statistics
+
+summary(dat5cm)
+
+apply(dat5cm[,1:9], 2, max)
+apply(dat5cm[,1:9], 2, min)
+apply(dat5cm[,1:9], 2, median)
+apply(dat5cm[,1:9], 2, mean)
+apply(dat5cm[,1:9], 2, sd)
+
+par(mfrow=c(1,2))
+plot(density(dat$CO), main='CO available data')
+abline(v=mean(dat$CO), col='blue')
+abline(v=median(dat$CO), col='blue', lty=2)
+
+plot(density(log(dat$CO)), main=' log(CO) available data')
+abline(v=mean(log(dat$CO)), col='blue')
+abline(v=median(log(dat$CO)), col='blue', lty=2)
+
+#Spatial autocorrelation
+
+
+
+pr2 <- projectRaster(dem30ag, crs='+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+
+
+evi=crop(evi, pr2)
+
+
+
+
+
+
+
+
+shape <- readOGR(dsn = ".", layer = "perf_cos_30cm")f <- hist(xxx[[1]], breaks=30)
+dat <- data.frame(counts= f$counts,breaks = f$mids)
+
+ggplot(dat[7:15,], aes(x = breaks, y = counts, fill =counts)) + ## Note the new aes fill here
+  geom_bar(stat = "identity",alpha = 0.8)+
+  xlab("Trend 1001 2013")+ ylab("Frequency")+
+  scale_x_continuous(breaks = seq(-0.05,0,0.05),
+                   labels = seq(-0.01,0,0.01))+
+  scale_fill_gradient(low="blue", high="red")   
+
+
+saga_cmd libta_morphometry 0 -ELEVATION "dem90mINEGI.tif" -SLOPE slope -ASPECT aspect -HCURV hcurv -VCURV vcurv -METHOD 5 

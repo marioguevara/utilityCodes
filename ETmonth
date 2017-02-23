@@ -1,0 +1,164 @@
+a=list.files()
+a
+
+library(raster)
+
+a=s[[1:12]]
+
+path='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/'
+#paste(path, 'xET', i, '.tif', sep='')
+
+for(i in 2000:2012){
+
+smNeg=crop(sm, neg)
+smNeg=mask(smNeg, negres)
+smPos=mask(smPos, posres)
+
+
+q=seq(1, 156, by=12)+11
+
+f1 <- function(x) calc(x, mean)
+beginCluster()
+a=stack(list.files()[1:24])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2001.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[25:36])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2002.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[37:48])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2003.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[49:60])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2004.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[61:72])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2005.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+######
+beginCluster()
+a=stack(list.files()[73:84])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2006.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[85:96])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2007.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[97:108])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2008.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+######
+beginCluster()
+a=stack(list.files()[109:120])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2009.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[121:132])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2010.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[133:144])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2011.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+beginCluster()
+a=stack(list.files()[145:156])
+X <- clusterR(a, f1)
+writeRaster(X, file='/home/mario/work/SoilMoisture/ETmodisMonthlyWorld/xET2012.tif', overwrite=TRUE)
+#writeRaster(X, file=paste(path, 'xET', i, '.tif', sep=''), overwrite=TRUE)
+endCluster()
+
+
+
+
+
+
+X=calc(s, mean)
+Sd=calc(s, sd)
+med=calc(s, median)
+min=calc(s, min)
+max=calc(s, max)
+e=stack(X, Sd, med, min, max)
+writeRaster(e, file='ET2000.tif', overwrite=TRUE)
+
+
+s=stack(a[13:24])
+s[s==32767]=NA
+X=calc(s, mean)
+Sd=calc(s, sd)
+med=calc(s, median)
+min=calc(s, min)
+max=calc(s, max)
+e=stack(X, Sd, med, min, max)
+writeRaster(e, file='ET2001.tif', overwrite=TRUE)
+
+s=stack(a[25:36])
+s[s==32767]=NA
+X=calc(s, mean)
+Sd=calc(s, sd)
+med=calc(s, median)
+min=calc(s, min)
+max=calc(s, max)
+e=stack(X, Sd, med, min, max)
+writeRaster(e, file='ET2002.tif', overwrite=TRUE)
+
+s=stack(a[37:48])
+s[s==32767]=NA
+X=calc(s, mean)
+Sd=calc(s, sd)
+med=calc(s, median)
+min=calc(s, min)
+max=calc(s, max)
+e=stack(X, Sd, med, min, max)
+writeRaster(e, file='ET2003.tif', overwrite=TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+mydata <- h5read("Q20110012011365.L3m_YR_SOILM_V4.0_rad_sm_1deg", 
+"Q20110012011365.L3m_YR_SOILM_V4.0_rad_sm_1deg")
+
+

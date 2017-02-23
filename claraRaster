@@ -1,0 +1,12 @@
+library(raster)
+library(cluster)
+rst <- raster(system.file("external/test.grd", package="raster"))
+rst.stack <- stack(rst,sqrt(rst),(rst*rst))
+plot(rst)
+v <- getValues(rst.stack)
+i <- which(! is.na(v[,1]))
+clus <- clara(v[i,], 10)
+plot(clus)
+r <- raster(rst)
+r[i] <- clus$clustering
+plot(r)

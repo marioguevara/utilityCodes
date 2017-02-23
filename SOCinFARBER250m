@@ -1,0 +1,216 @@
+rm(list=ls())
+
+###
+
+separar1 <- function(dataframe, seed=NULL,trainsize=0.50) {#from 0-1
+  if (!is.null(seed)) set.seed(seed)
+  index <- 1:nrow(dataframe)
+  trainindex <- sample(index, round(trainsize*nrow(dataframe)))
+  trainset <- dataframe[trainindex, ]
+  testset <- dataframe[-trainindex, ]
+  list(trainset=trainset,testset=testset)
+  }
+
+###benchmark tool
+
+CronometroON<- function(){
+      tic<-proc.time()[3]
+      assign(".tic", tic, envir=baseenv())
+      invisible(tic)
+      }
+CronometroOFF<- function(){
+      tic <- get(".tic", envir=baseenv())
+      toc<-proc.time()[3]-tic
+      hrs<-as.integer(toc/3600)
+      minu<- as.integer(((toc/3600)-hrs)*60)
+      seg<- ((((((toc/3600)-hrs)*60)))-minu)*60
+      time<-paste(as.character(hrs),"hrs ",as.character(minu),"min ",as.character(round(seg,digit=2)),"seg",sep="")
+      return(time)
+      }
+CronometroON()
+
+###libraries
+
+#library(rethinking)
+library(rasterVis)
+library(dichromat)
+library(randomForest)
+library(kknn)
+library(raster)
+library(GSIF)
+library(ranger)
+
+###lm r2
+library(bootstrap)
+k_fold_rsq <- function(lmfit, ngroup=10) {
+    # assumes library(bootstrap)
+    # adapted from http://www.statmethods.net/stats/regression.html
+    mydata <- lmfit$model
+    outcome <- names(lmfit$model)[1]
+    predictors <- names(lmfit$model)[-1]
+
+    theta.fit <- function(x,y){lsfit(x,y)}
+    theta.predict <- function(fit,x){cbind(1,x)%*%fit$coef} 
+    X <- as.matrix(mydata[predictors])
+    y <- as.matrix(mydata[outcome]) 
+
+    results <- crossval(X,y,theta.fit,theta.predict,ngroup=ngroup)
+    raw_rsq <- cor(y, lmfit$fitted.values)**2 # raw R2 
+    cv_rsq <- cor(y,results$cv.fit)**2 # cross-validated R2
+
+    c(raw_rsq=raw_rsq, cv_rsq=cv_rsq)
+}
+###prepare data
+dat=read.table('/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/back/inputdataUSA/train_name.txt', sep='\t', header=T)
+dat=data.frame(dat[,1:2], soc=dat[,20], top=dat[,17], bot=dat[,18], dat[,28:51])
+soc=dat[which(dat$top==0),]
+soc=soc[which(soc$bot<30),]
+soc[which(soc$soc==0),]=NA
+soc=na.omit(soc)
+soc$bot=NULL
+soc$top=NULL
+datmx=read.table('/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/back/inputdataMX/serie1_75.txt', sep='\t', header=T)
+datmx$cdep[datmx$cdep==-99999.0] <- 0.0001
+datmx[datmx==-99999.0] <- NA
+datmx=data.frame(soc=datmx$Z, datmx[,1:2], datmx[,6:29])
+datmx[which(datmx$soc==0),]=NA
+datmx=na.omit(datmx)
+datmx$soc=(datmx$soc*1000000)/100000000
+soc=rbind(soc[,1:3], datmx[,1:3])
+
+###prepare predictors
+
+setwd('/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/back/covs')
+lis=list.files(pattern='.tif')
+s=stack(lis[-c(9,12,16,17, 22,21,23,24,26, 28, 32, 33)])
+e=extract(s, soc[,1:2])
+e=data.frame(e)
+soc1=cbind(soc,  data.frame(scale(e[-c(15:16, 18)])))
+soc1$cdep[is.na(soc1$cdep)==T] <- 0.0001
+soc1=na.omit(soc1)
+str(soc1)
+cov=as.data.frame(s, xy=T)
+colnames(cov)[1]<-'X'
+colnames(cov)[2]<-'Y'
+cov$cdep[is.na(cov$cdep)==T] <- 0.0001
+cov=na.omit(cov)
+cov_s=data.frame(scale(cov[-c(1:2, 17:18, 20)]))
+cov1=cbind(cov[,1:2], cov_s)
+cov1$x=cov1$X
+cov1$y=cov1$Y
+coordinates(cov1)=~x+y
+gridded(cov1)=T
+cov1=stack(cov1)
+
+###log soc and all variables
+
+proj=soc1
+proj$land=NULL
+proj$soc=log(soc1$soc)
+round(cor(proj),2 )
+par(mfrow=c(1,3))
+hist(exp(proj$soc), main='', col='gray', xlab='gr/cm2')
+hist(proj$soc, main='', col='gray')
+
+CronometroOFF()
+ex=data.frame(proj[,1:2], soc=proj$soc)
+coordinates(ex)=~X+Y
+proj4string(ex)=CRS('+proj=longlat +datum=WGS84 +no_defs')
+ex <- spTransform(ex, CRS("+proj=aeqd +lat_0=52 +lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+dir=list.dirs( "/home/work/spac/mguevara/TOM/covs")
+dir=dir[2:length(dir)]
+time=character() 
+tile=character(0)
+
+d=substr(dir[1], 35,61)
+output <- "/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/gsif/"
+output <- paste(output, d, sep='')
+output
+dir.create(file.path(output), showWarnings = FALSE)
+m <- readRDS(paste(dir[1], '/',d, '.rds', sep=''))
+m2=data.frame(m[1:1,], soc=c('1'))
+m2=m2[-1,]
+
+
+
+for (x in 1:length(dir)){
+d=substr(dir[x], 35,61)
+output <- "/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/gsif/"
+output <- paste(output, d, sep='')
+output
+dir.create(file.path(output), showWarnings = FALSE)
+m <- readRDS(paste(dir[x], '/',d, '.rds', sep=''))
+ov=over(ex, m)
+ov$x=ex$X
+ov$y=ex$Y
+ov$soc=ex$soc
+ov=ov[complete.cases(ov),]
+ov$TSDMOD3=NULL
+ov$TSNMOD3=NULL
+m2=rbind(m2, ov)
+}
+
+CronometroON()
+
+map=data.table(x=numeric(),y=numeric(), z=numeric())
+#map=data.table(x=numeric(),y=numeric(), fit=numeric(),
+lwr=numeric(), upr=numeric())
+
+#lm1=lm(soc~T06MOD3+EX3MOD5+TWIMRG5, m2)
+lm1=randomForest(soc~T06MOD3+EX3MOD5+TWIMRG5, m2, ntree=500)
+
+dir=list.dirs( "/home/work/spac/mguevara/TOM/covs")
+dir=dir[2:length(dir)]
+
+
+for (x in 1:length(dir)){
+d=substr(dir[x], 35,61)
+output <- "/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/gsif/"
+output <- paste(output, d, sep='')
+output
+dir.create(file.path(output), showWarnings = FALSE)
+m <- readRDS(paste(dir[x], '/',d, '.rds', sep=''))
+CronometroON()
+#pred <- predict(lm1, interval="confidence",newdata=m)# 
+pred <- predict(lm1, m)
+pred=data.table(x=m$x, y=m$y, z=pred)
+#pred=data.table(x=m$x, y=m$y, data.frame(pred))
+map=rbind(map, pred)
+map=na.omit(map)
+}	
+
+unc=readRDS("LinearModelUNC.rds")
+
+
+coordinates(map)=~x+y
+gridded(map)=TRUE
+
+#KIKKED OUT OF MEMORY
+
+map=stack(map)
+#map=raster(map)
+proj4string(map)= CRS("+proj=aeqd +lat_0=52 +lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+plot(map)
+#writeRaster(map, file='socUNC_T06MOD3_EX3MOD5_TWIMRGS_LM_29expVar.tif')
+#writeRaster(map, file='socPRED_T06MOD3_EX3MOD5_TWIMRGS_LM_29expVar.tif')
+CronometroOFF()
+
+
+raca=readRDS("racaSOC.rds")
+coordinates(raca)=~Lon+Lat
+proj4string(raca)=CRS('+proj=longlat +datum=WGS84 +no_defs')
+raca <- spTransform(raca, CRS("+proj=aeqd +lat_0=52 +lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+e=data.frame(extract(map,raca))
+val=data.frame(e, raca[,10:12])
+val[val==0]=NA
+val=val[complete.cases(val),]
+cor.test(log(val[,1]), log(raca[,2]))
+
+proj4string(cov1)=CRS('+proj=longlat +datum=WGS84 +no_defs')
+
+
+

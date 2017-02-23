@@ -1,0 +1,87 @@
+library(raster)
+s=stack('SOC_250m_SGrids_lm_ranger.tif')
+names(s)[[1]]<-'sg250tha'
+names(s)[[2]]<-'sg250grcm2'
+names(s)[[3]]<-'fitlm'
+names(s)[[4]]<-'fitrg'
+mx=readRDS("MEX_adm2.rds")
+us=readRDS("USA_adm2.rds" )
+
+mx.aeqd <- spTransform(mx, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+us.aeqd <- spTransform(us, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+raca=readRDS("racaSOC.rds")
+raca[raca==0]=NA
+raca=raca[complete.cases(raca),]
+coordinates(raca)=~Lon+Lat
+proj4string(raca)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+raca.aeqd <- spTransform(raca, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+e=data.frame(extract(s, raca.aeqd),raca.aeqd)
+e=data.frame(e[c(2,3,4,14,15,16)])
+cor(log(e[,1]), log(e[,5]))
+cor(log(e[,2]), log(e[,5]))
+cor(log(e[,3]), log(e[,5]))
+library (Metrics)
+rmse(log(e[,5]),log(e[,1]))
+rmse(log(e[,5]),log(e[,2]))
+rmse(log(e[,5]),log(e[,3]))
+
+beginCluster()
+f2 <- function(x) calc(x, diff)
+z <- clusterR(s[[2:3]], f2)
+endCluster()
+
+plot(z, zlim=c(-2,2), col=colorRampPalette(c("red", "white", "blue"))(255))
+
+
+writeRaster(z,file='DIFF_SG250m_fitLM.tif', overwrite=TRUE)
+
+beginCluster()
+f2 <- function(x) calc(x, diff)
+z2 <- clusterR(s[[c(2,4)]], f2)
+endCluster()
+x11()
+plot(z2, zlim=c(-2,2), col=colorRampPalette(c("red", "white", "blue"))(255))
+
+
+writeRaster(z2,file='DIFF_SG250m_fitRANGER.tif', overwrite=TRUE)
+
+
+
+library(raster)
+library(ncdf4)
+fname <- "T_C.nc4"
+nc<-nc_open(fname)
+br <- raster(fname, varname="t_c")
+br=br*0.1
+
+
+
+library(raster)
+library(ncdf4)
+fname <- "T_C.nc4"
+nc<-nc_open("pdsisc.monthly.maps.1850-2010.fawc=1.r2.5x2.5.ipe=2.nc")
+br <- raster(fname, varname="t_c")
+br=br*0.1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

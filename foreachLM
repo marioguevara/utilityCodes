@@ -1,0 +1,39 @@
+library(rgdal)
+library(foreach)
+library(doParallel)
+cl<-makeCluster(15)
+registerDoParallel(cl)
+
+ 
+#start time
+strt<-Sys.time()
+ 
+
+dir=list.dirs( "/home/work/spac/mguevara/TOM/covs")
+dir=dir[2:length(dir)]
+
+dat=readRDS('SOCMXUSdata30cm_gsif250mCOVS.rds')
+lm1=lm(soc~T06MOD3+EX3MOD5+TWIMRG5, dat)
+
+map=data.frame(x=numeric(),y=numeric(), z=numeric())
+
+ls<-foreach(i = 1:length(dir)) %dopar% {
+d=substr(dir[i], 35,61)
+output <- "/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/gsif/"
+output <- paste(output, d, sep='')
+output
+dir.create(file.path(output), showWarnings = FALSE)
+m <- readRDS(paste(dir[i], '/',d, '.rds', sep=''))
+#pred <- predict(lm1, interval="confidence",newdata=m)# 
+pred <- predict(lm1, m)
+pred=data.frame(x=m$x, y=m$y, z=pred)
+#pred=data.frame(x=m$x, y=m$y, data.frame(pred))
+map=rbind(map, pred)
+map=na.omit(map)
+}	
+
+
+print(Sys.time()-strt)
+stopCluster(cl)
+ 
+

@@ -1,0 +1,199 @@
+library(raster)
+library(rgdal)
+
+ref=raster('lu2005.tif')proj4string(raca)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+sg1km=stack("OCSTHA_M_sd1_1km_ll.tif","OCSTHA_M_sd2_1km_ll.tif","OCSTHA_M_sd3_1km_ll.tif")
+sg1km=crop(sg1km,ref)
+
+f1 <- function(x) calc(x, mean)
+
+beginCluster(6)
+sg1km <- clusterR(sg1km, f1)
+endCluster()
+
+
+sg250=stack("OCSTHA_M_sd1_250m_ll.tif","OCSTHA_M_sd2_250m_ll.tif","OCSTHA_M_sd3_250m_ll.tif")
+sg250=crop(sg250, ref)
+
+beginCluster(6)
+sg250 <- clusterR(sg250, f1)
+endCluster()
+#
+
+
+fitlm=raster('fit_SOC_LinearModel250m.tif')
+
+ref.aeqd <- projectRaster(ref, crs="+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+fitlm=crop(fitlm,ref.aeqd)
+raca=readRDS("racaSOC.rds")
+proj4string(pred5)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+raca[raca==0]=NA
+raca=raca[complete.cases(raca),]
+coordinates(raca)=~Lon+Lat
+proj4string(raca)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+raca.aeqd <- spTransform(raca, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+elm=data.frame(extract(fitlm, raca.aeqd))
+cor.test(log(raca.aeqd$SOCstock30), log(elm[,1]))
+
+fitranger=raster("ranger_SOC_LinearModel250m.tif")
+fitranger=crop(fitranger,ref.aeqd)
+erg=data.frame(extract(fitranger, raca.aeqd))
+cor.test(log(raca.aeqd$SOCstock30), log(erg[,1]))
+
+e1km=data.frame(extract(sg1km, raca))
+e250=data.frame(extract(sg250, raca))
+cor.test(log(raca$SOCstock30), log(e1km[,1]))
+cor.test(log(raca$SOCstock30), log(e250[,1]))
+
+#(1e-9*c(cellStats(sgX1km, 'sum')))
+
+sg1km.aeqd <- projectRaster(sg1km, crs="+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+sg250.aeqd <- projectRaster(sg250, crs="+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+sg250.aeqd=resample(sg250.aeqd, fitlm)
+
+proj4string(s)=crs("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+sg250grcm2 <-  sg250.aeqd * 0.01
+s=stack(sg250.aeqd,sg250grcm2, fitlm, fitranger)
+writeRaster(s,file='SOC_250m_SGrids_lm_ranger.tif')
+
+ library(raster)
+s=stack('SOC_250m_SGrids_lm_ranger.tif')
+names(s)[[1]]<-'sg250tha'
+names(s)[[2]]<-'sg250grcm2'
+names(s)[[3]]<-'fitlm'
+names(s)[[4]]<-'fitrg'
+mx=readRDS("MEX_adm2.rds")
+us=readRDS("USA_adm2.rds" )
+
+mx.aeqd <- spTransform(mx, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+us.aeqd <- spTransform(us, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+mx.ae <- spTransform(mx, CRS=CRS("+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs
+"))
+
+us.ae <- spTransform(us, CRS=CRS("+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs
+"))
+
+
+
+US=crop(p, us.ae)
+
+MX=crop(p, mx.ae)
+
+
+
+
+x <- sampleRegular(s, 100000, xy=T)
+x[x==0]=NA
+x=na.omit(x)
+cor.test(x[,2], x[,4])
+par(mfrow=c(1:2))
+plot(x[,3], x[,2])
+plot(log(x[,1]), log(x[,2]))
+
+#c=corLocal(fitlm, sg250.aeqd)
+
+beginCluster(6)
+f1 <- function(x, y) corLocal(x[[2]],x[[4]])
+corSG_rangerfit <- clusterR(s, f1)
+endCluster()
+
+#writeRaster(corSG_rangerfit,file='CorLocalMap_ranger_grids250m.tif')
+#writeRaster(corSG_lmfit,file='CorLocalMap_lm_grids250m.tif')
+
+ag=aggregate(corSG_rangerfit, 10, mean)
+
+ref.aeqd <- projectRaster(ref, crs="+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+s1=resample(s, ref.aeqd)
+plot(s1)
+
+#st=stack(sg250.aeqd, fitlm)
+st=st[[1]]-st[[2]] 
+
+beginCluster(5)
+f1 <- function(x-y) calc(x[[2]]-x[[4]])
+s11 <- clusterR(s,  st[[1]]-st[[2]]  )
+endCluster()
+
+s=(100*1e-9*csg250.aeqd)-(fitlm)
+writeRaster(s, file='DifferenceMap.tif')
+
+(100*1e-9*c(cellStats(sg250.aeqd, 'sum')))
+(100*1e-9*c(cellStats(fitlm, 'sum')))
+
+e=data.frame(extract(sg250, raca))
+sgX250=calc(sg250, mean)
+(100*1e-9*c(cellStats(sgX250, 'sum')))
+
+#sgSD250=calc(sg250, sd)
+e2=data.frame(extract(sgX250, raca))
+cor.test(log(raca$SOCstock30), log(e2[,1]))
+
+inegi25=read.table('INEGI_25.txt', sep='\t', header=T)
+inegi25[inegi25$COST==0,]=NA
+inegi25=inegi25[complete.cases(inegi25),]
+str(inegi25)
+coordinates(inegi25)=~X+Y
+
+proj4string(inegi25)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+
+inegi25.aeqd <- spTransform(inegi25, CRS=CRS("+proj=aeqd +lat_0=52
++lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+e2=data.frame(extract(s, inegi25.aeqd))
+inegi25.aeqd=data.frame(inegi25.aeqd,e2)
+inegi25.aeqd=inegi25.aeqd[complete.cases(inegi25.aeqd),]
+
+
+inegi25.aeqd[inegi25.aeqd$extract.sgX250..inegi25.==0,]=NA
+inegi25.aeqd=inegi25.aeqd[complete.cases(inegi25.aeqd),]
+
+cor(inegi25.aeqd[-c(1,3,4,7)])
+
+
+coordinates(inegi25)=~X+Y
+inegi25$e2=data.frame(extract(sgX1km, inegi25))
+inegi25=data.frame(inegi25)
+inegi25=inegi25[complete.cases(inegi25),]
+inegi25[inegi25$extract.sgX1km..inegi25.==0,]=NA
+inegi25=inegi25[complete.cases(inegi25),]
+cor(log(inegi25$COST), log(inegi25[,7]))
+
+
+
+
+
+
+
+valLm=readRDS("Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\linearModels\\valN70perc_500_twiEviTemp_lm.rds")
+valRf=readRDS("Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\randomForests\\valN70perc_500_twiEviTemp_ranger.rds")
+valKn=readRDS("Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\kknn\\valN70perc_500_twiEviTemp_kn.rds")
+valBr=readRDS("Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\rethinking\\valN70perc_500_m4s_twi_evi_temp.rds")
+
+
+
+
+

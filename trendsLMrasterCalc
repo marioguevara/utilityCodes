@@ -1,0 +1,79 @@
+https://matinbrandt.wordpress.com/2013/11/15/pixel-wise-time-series-trend-anaylsis-with-ndvi-gimms-and-r/
+
+vpkg_require r/3.2.5
+vpkg_require  r-gdal/20160509 
+#r-search rgdal 
+
+R -q --no-save
+rm(list=ls())
+diverge0 <- function(p, ramp) {
+  # p: a trellis object resulting from rasterVis::levelplot
+  # ramp: the name of an RColorBrewer palette (as character), a character 
+  #       vector of colour names to interpolate, or a colorRampPalette.
+  require(RColorBrewer)
+  require(rasterVis)
+  if(length(ramp)==1 && is.character(ramp) && ramp %in% 
+     row.names(brewer.pal.info)) {
+    ramp <- suppressWarnings(colorRampPalette(brewer.pal(11, ramp)))
+  } else if(length(ramp) > 1 && is.character(ramp) && all(ramp %in% colors())) {
+    ramp <- colorRampPalette(ramp)
+  } else if(!is.function(ramp)) 
+    stop('ramp should be either the name of a RColorBrewer palette, ', 
+         'a vector of colours to be interpolated, or a colorRampPalette.')
+  rng <- range(p$legend[[1]]$args$key$at)
+  s <- seq(-max(abs(rng)), max(abs(rng)), len=1001)
+  i <- findInterval(rng[which.min(abs(rng))], s)
+  zlim <- switch(which.min(abs(rng)), `1`=i:(1000+1), `2`=1:(i+1))
+  p$legend[[1]]$args$key$at <- s[zlim]
+  p$par.settings$regions$col <- ramp(1000)[zlim[-length(zlim)]]
+  p
+}
+
+
+library(raster)
+library(rgdal)
+library(rasterVis)
+filez <- list.files(path=getwd(),full.name=F,pattern="\\_07.tif$")
+r=stack(filez, bands=3)#1dim,2cv,3sd,4av,5min,6max
+plot(r[[1]])
+r
+
+e=drawExtent()#####
+
+saveRDS(e, file='extentTest.rds')
+e=readRDS('extentTest.rds')
+cr=crop(r, e)
+e=as(e, 'SpatialPolygons')
+m=mask(cr, e)
+plot(m[[1]])
+names(m)
+
+#r[r==NA]=0
+time <- 1:nlayers(r) 
+fun=function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[2] }}
+slope=calc(m, fun)
+
+#p=levelplot(slope)
+#diverge0(p, ramp='RdBu')
+
+levelplot(slope,par.settings=RdBuTheme(), at=seq(-max(abs(cellStats(slope, range))), max(abs(cellStats(slope, range))), len=100))
+
+x11()
+
+levelplot(slope,par.settings=RdBuTheme(), at=seq(-max(abs(cellStats(slope, range))), max(abs(cellStats(slope, range))), len=7))
+
+
+
+fun=function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[8] }}
+p <- calc(m, fun=fun)
+x11()
+levelplot(p)
+p
+#
+
+beginCluster()
+fun <- function(x) { lm(x ~ time)$coefficients }
+f2 <- function(x) calc(x, fun)
+z <- clusterR(r, f2)
+endCluster()
+

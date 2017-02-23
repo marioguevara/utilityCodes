@@ -1,0 +1,37 @@
+r=raster("1980_30_master_.tif")
+
+CronometroON() 
+beginCluster()
+r=clusterR(r, log)
+endCluster()
+CronometroOFF
+#
+CronometroON() 
+beginCluster()
+r=clusterR(r, exp)
+endCluster()
+CronometroOFF
+#
+f3 <- function(r) r-4
+CronometroON() 
+beginCluster()
+r <- clusterR(r, calc, args=list(fun=f3))
+endCluster()
+CronometroOFF
+
+
+
+r    ###Checa los valores minimos y maximos### si sale -inf, valor, repites log y luego exp tambien
+
+r=clusterR(r, exp)
+f3 <- function(r) r-4
+CronometroON()
+r <- clusterR(r, calc, args=list(fun=f3))
+CronometroOFF()
+r
+
+writeRaster(r, file=paste('mangroveCover30m', i, '.tif', sep=''))
+
+endCluster()
+
+

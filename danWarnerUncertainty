@@ -1,0 +1,79 @@
+library(plyr)
+library(randomForest)
+library(ipred)
+library(e1071)
+library(quantregForest)
+
+rfTuning <- tune.randomForest(co~., data = dd[-c(1,2)],ntree=1000, mtry=seq(from=2,to=14,by=1),
+                      tunecontrol= tune.control(sampling="cross",cross=10))
+
+rfvc <- errorest(co ~ ., data = dd[-c(1,2)],model = randomForest, ntree=1000,
+               gamma=as.numeric(rfTuning$best.parameters[1]),
+                 , estimator="cv", est.para=control.errorest(k=10,random=TRUE,predictions=TRUE))
+
+rmse <- rfvc$error
+
+# correlación
+
+cd <- cor(dd$co, rfvc$predictions)
+
+# print em
+rmse
+cd
+
+
+quant_rf_model <- quantregForest(y=dd$co, x=dd[-1])
+
+# plot out-of-bag predictions (for training data)
+plot(quant_rf_model)
+
+pnorm(1, mean = 0, sd = 1)-pnorm(-1, mean = 0, sd = 1)
+
+pred_1sd <- predict(quant_rf_model,
+                    cov[3:14], # ***
+                    quantiles=c((1-.682)/2, 1-(1-.682)/2))
+
+#
+Lim_sup_1sd <- pred_1sd[,3]
+Lim_inf_1sd <- pred_1sd[,1]
+
+# "incertidumbre"
+var_1sd <- abs(Lim_sup_1sd-Lim_inf_1sd) # absolute difference
+
+pred=data.frame(cov[1:2], pred=var_1sd)
+coordinates(pred)=~x+y
+gridded(pred)=TRUE
+pred <- raster(pred)
+library(rasterVis)
+levelplot(pred)
+
+
+
+separar1 <- function(dataframe, seed=NULL,trainsize=0.50) {#from 0-1
+  if (!is.null(seed)) set.seed(seed)
+  index <- 1:nrow(dataframe)
+  trainindex <- sample(index, round(trainsize*nrow(dataframe)))
+  trainset <- dataframe[trainindex, ]
+  testset <- dataframe[-trainindex, ]
+  list(trainset=trainset,testset=testset)
+  }
+
+
+
+train <- separar1(dd, seed=NULL, trainsize=0.50)  
+test<-train[[2]];dim(test)
+train=train[[1]];dim(train)
+
+ library(car)
+ fit=step(lm(co~.,train))
+barplot(vif(fit))
+predict(fit, test)
+predi=predict(fit, test)
+cor(train$co, predi)
+
+
+
+
+
+
+

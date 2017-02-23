@@ -1,0 +1,42 @@
+
+
+
+y=proj
+datosNummodel <- separar1(y, trainsize=0.20) # se ejecuta la función para separar los datos
+y <- datosNummodel$trainset  # se crea la base de entranamiento
+prueba <- datosNummodel$testset 
+y=y[complete.cases(y),]
+coordinates(y)=~X+Y
+ex=extract(cov1, y)
+y=cbind(x=y$X, y=y$Y, soc=y$soc, data.frame(scale(ex)))
+coordinates(y)=~x+y
+proj4string(y)=CRS('+proj=longlat +datum=WGS84 +no_defs')
+y <- spTransform(y, CRS("+proj=lcc +lat_1=33 +lat_2=45 +lat_0=40 +lon_0=-97 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs "))
+proj4string(cov1)=CRS('+proj=longlat +datum=WGS84 +no_defs')
+cov1<- projectRaster(cov1, crs='+proj=lcc +lat_1=33 +lat_2=45 +lat_0=40 +lon_0=-97 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+covsp=as.data.frame(cov1, xy=T)
+covsp=covsp[complete.cases(covsp),]
+coordinates(covsp)=~x+y
+gridded(covsp)=TRUE
+proj4string(covsp)=CRS('+proj=lcc +lat_1=33 +lat_2=45 +lat_0=40 +lon_0=-97 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs')
+
+
+
+#GSIF
+omm <- fit.gstatModel(y, soc~twi+xEVI+xTemp, covsp, 
+   method="ranger")
+## plot to see how good is the fit:
+#plot(omm)
+## plot the estimated error for number of bootstrapped trees:
+#plot(omm@regModel)
+#omm@vgmModel
+om.rk <- predict(omm, covsp, nfold=10)
+
+om.rk##10%=90.5 RMSE0.28
+
+plot(om.rk)
+
+r=raster(om.rk@predicted)
+r=exp(r)
+r<- projectRaster(r, crs='+proj=longlat +datum=WGS84 +no_defs')
+levelplot(r,par.settings = myTheme, maxpixels=1e+06)

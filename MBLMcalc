@@ -1,0 +1,81 @@
+
+fun3 <- function(x) {
+library(mblm)
+if(length(na.omit(x))>1){
+#print(x)
+#print(class(x))
+x<-x[!is.na(x)]
+time <-1:length(x)
+l<-mblm(x ~ time)
+r<-l$coefficients[2]
+p<-summary(l)$coefficients[2,4]
+rr<-c(r,p)
+#rr<-r
+} else{rr<-c(NA,NA)}
+#} else{rr<-NA}
+return(rr)}
+
+delta <- calc(m[[2:34]], fun3)
+delta2 <- calc(m[[2:36]], fun3)
+delta3 <- calc(m[[14:36]],fun3)
+
+
+library(remote)
+gimms_deseason <- deseason(dat[[]], cycle.window = 24, use.cpp = TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+fun3 <- function(x) {
+library(mblm)
+#print(x)
+#print(class(x))
+if(length(na.omit(x))>1){
+time <-1:length(x)#print(x)
+l<-mblm(x ~ time)
+r<-l$coefficients[2]
+p<-summary(l)$coefficients[2,4]
+#rr<-c(r,p)
+rr<-r
+#} else{rr<-c(NA,NA)}
+} else{rr<-NA}
+return(rr)}
+
+#delta <- calc(m[[2:34]], fun3)
+
+
+library(parallel)
+beginCluster(4)
+cl <- getCluster()
+clusterExport(cl, list("fun3"))
+z2 <- calc(m[[14:34]], fun=function(x){ parApply(cl, x, 1, FUN=fun3)} )##calc
+returnCluster()
+endCluster()
+
+
+
+

@@ -1,0 +1,249 @@
+####vpkg_require r-rethink
+
+R -q --no-save
+
+rm(list=ls())
+
+library(GSIF)
+library(Metrics)
+library(sp)
+library(rpart)
+library(nlme)
+library(gstat)
+library(randomForest)
+library(quantregForest)
+library(xgboost)
+library(caret)
+library(scales)
+library(AICcmodavg)
+library(rasterVis)
+library(readxl)
+library(raster)
+library(rgdal)
+library(automap)
+
+site09=read_excel("20120921_INFyS_2011.xlsx",sheet = 6)
+data09=read_excel("20120921_INFyS_2011.xlsx", sheet = 2)
+data09$NUMNAL<-data09$Numnal
+d09=merge(site09[c(1,3,4)], data09[c(16,6)], by='NUMNAL')
+d09[d09$NumEspecies==0,]=NA
+d09=d09[complete.cases(d09),]
+d09[d09$NumEspecies==163,]=NA
+d09=d09[complete.cases(d09),]
+summary(d09)
+
+coordinates(d09)=~X+Y
+automapPlot(d09, zcol='NumEspecies')
+par(mfrow=c(1,2))
+hist(d09$NumEspecies,  col= ' gray ', main = 'n spp')
+hist(log(d09$NumEspecies),  col= ' gray ', main = 'n spp')
+
+variogram = autofitVariogram(log(NumEspecies)~1, d09)
+plot(variogram(log(NumEspecies)~1, d09), cloud = TRUE , identify = TRUE)
+
+
+setwd('/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/back/covs')
+lis=list.files(pattern='.tif')
+ls()
+
+d=data.frame(d09)
+s=stack(lis[-c(9,18,19, 21, 26)])
+e=data.frame(extract(s[[-c(12,15,16,18)]], d[,2:3]))
+d=cbind(NumEspecies=d$NumEspecies ,y=d$Y,x=d$X,   data.frame(scale(e)))
+d$cdep[is.na(d$cdep)==T] <- 0.0001
+d=d[complete.cases(d),]
+str(d)
+
+barplot( cor(as.matrix(d[,1]), as.matrix(d[,-1])), las=2)
+
+separar1 <- function(dataframe, seed=NULL,trainsize=0.025) {#from 0-1
+  if (!is.null(seed)) set.seed(seed)
+  index <- 1:nrow(dataframe)
+  trainindex <- sample(index, round(trainsize*nrow(dataframe)))
+  trainset <- dataframe[trainindex, ]
+  testset <- dataframe[-trainindex, ]
+  list(trainset=trainset,testset=testset)
+  }
+
+names(s)
+x.lcc <- projectRaster(scale(s[[c(1, 7,8,19,24,25)]]), crs="+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs ")
+
+#x.lcc=aggregate(x.lcc, 5, mean)
+
+x.lcc=as.data.frame(x.lcc, xy=T)
+x.lcc=x.lcc[complete.cases(x.lcc),]
+coordinates(x.lcc)=~x+y
+x.lcc=as(x.lcc, 'SpatialPixelsDataFrame')
+
+st=stack(x.lcc)
+#plot(st[[1]])
+#e=drawExtent()
+#class       : Extent
+#xmin        : 874168.1
+#xmax        : 4123752
+#ymin        : 57461.37
+#ymax        : 2720632
+
+e=extent(c(874168.1,4123752,57461.37,2720632))
+
+st=crop(st,e)
+
+x.lcc=as(st, 'SpatialPixelsDataFrame')
+proj4string(x.lcc)=crs("+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs ")
+
+##train
+
+train <- separar1(data.frame(d), seed=NULL, trainsize=0.025)  
+test<-train[[2]];dim(test)
+train=train[[1]];dim(train)
+#x11()
+#barplot( cor(as.matrix(d[,1]), as.matrix(d[,-1])), las=2)
+coordinates(train)=~x+y
+proj4string(train)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+train.lcc <- spTransform(train, CRS=CRS("+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs "))
+#variogram = autofitVariogram(log(NumEspecies)~xEVI, train.lcc)
+#plot(variogram)
+####
+#### Geostatistics
+
+#saveRDS(train.lcc, file='/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2011_NumEspecies_n1074_OKUK_gsif_DEMO.rds')
+#train.lcc=readRDS('/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2011_NumEspecies_n1074_OKUK_gsif_DEMO.rds')
+
+kriging_result = autoKrige(log(NumEspecies)~1,  train.lcc)
+plot(kriging_result)
+
+ok<-exp(raster(kriging_result$krige_output))
+
+uniKriging_result = autoKrige(log(NumEspecies)~xEVI+xTemp+dem,  train.lcc, x.lcc)#
+plot(uniKriging_result)
+uk <-exp(raster(uniKriging_result$krige_output))
+
+####Regression and Geostatistics
+####GSIF
+
+regM=data.frame(train.lcc)
+regM=data.frame(NumEspecies=regM[,1],
+regM[,23:24], regM[,2:22])
+regM=regM[complete.cases(regM),]
+#regMsp=regM
+#coordinates(regMsp)=~x+y
+#automapPlot(regMsp, zcol='NumEspecies')
+
+## fit a GLM with variogram:
+#saveRDS(regM, file='/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2010_NumEspecies_n1040_GLM_gsif_DEMO.rds')
+#regM=readRDS('/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2010_NumEspecies_n1040_GLM_gsif_DEMO.rds')
+
+m <- fit.regModel(NumEspecies~xEVI+xTemp+acPrec+difInso, rmatrix=regM, x.lcc,fit.family=gaussian(log), method="GLM")
+
+
+m@regModel
+m@vgmModel
+rk1GLM <- predict(m, x.lcc)
+rk1GLM
+rk1GLM=stack(rk1GLM@predicted)
+names(rk1GLM)
+#levelplot(rk1GLM[[1]])
+plot(rk1GLM[[1]])
+
+plot(rk1GLM[[1]], zlim=c(0,1))
+
+## EXPLORATORY fit a regression tree with variogram:
+   
+m2 <- fit.regModel(log1p(NumEspecies)~xEVI+xTemp+acPrec+difInso, rmatrix=regM, x.lcc,
+          method="rpart")
+     rk1RT <- predict(m2, x.lcc)
+     rk1RT
+     rk1RT=stack(rk1RT@predicted)
+     levelplot(rk1RT[[1]])
+
+#fit a random forest using randomForest
+
+m <- fit.regModel(NumEspecies~xEVI+xTemp+acPrec+difInso, rmatrix=regM, x.lcc, method="randomForest") 
+rk1RF <- predict(m, x.lcc)
+#plot(m)
+rk1RF
+slotNames(rk1RF)
+rk1RF=stack(rk1RF@predicted)
+levelplot(rk1RF[[1]])
+
+# fit a random forest using ranger
+
+m <- fit.regModel(NumEspecies~xEVI+xTemp+acPrec+difInso, rmatrix=regM, x.lcc, method="ranger") 
+rk1RFrg <- predict(m, x.lcc)
+#plot(m)
+rk1RFrg
+rk1RFrg=stack(rk1RFrg@predicted)
+levelplot(rk1RFrg[[1]])
+
+##Problems with Gradient boosting cross validation prediction
+## 
+m <- fit.regModel(log1p(NumEspecies)~xEVI+xTemp+difInso, rmatrix=regM, x.lcc, method="xgboost") #rvgm=NULL
+#rk1XG <- predict(m, x.lcc)
+xg=predict(stack(x.lcc),m@regModel)
+levelplot(exp(xg))
+
+#fit a random forest using quantregForest and derive an UNCERTAINTY PLOT
+
+m <- fit.regModel(NumEspecies~xEVI+xTemp+acPrec+difInso, regM, x.lcc, method="quantregForest") #rvgm=NULL,nfold=NULL
+rk1QRF <- predict(m, x.lcc)
+rk1QRF=stack(rk1QRF@predicted)#
+levelplot(rk1QRF[[1]])
+x11()
+levelplot(rk1QRF[[2]])
+
+ok = resample (ok, rk1GLM)
+uk = resample (uk, rk1GLM)
+
+preds=stack(ok, uk, rk1GLM[[1]], rk1RT[[1]],rk1RF[[1]],rk1RFrg[[1]],rk1QRF[[1]],xg=xg)
+
+names(preds[[1]])<-'ok'
+names(preds[[2]])<-'uk'
+names(preds[[3]])<-'glm'
+names(preds[[4]])<-'rt'
+names(preds[[5]])<-'rf'
+names(preds[[6]])<-'rfrg'
+names(preds[[7]])<-'qrf'
+names(preds[[8]])<-'xg'
+
+med=calc(preds, median)
+sdev=calc(preds, sd)
+
+preds=stack(preds, med, sdev)
+
+names(preds[[9]])<-'median'
+names(preds[[10]])<-'sdev'
+boxplot(preds, col='gray')
+
+
+saveRDS(preds, file='/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2012_NumEspecies_PREDICTED5x5km_gsif_DEMO.rds')
+
+# correlate with the testing data set
+
+#saveRDS(test, file='/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2009_NumEspecies_n42644_GLM_gsif_DEMO_test.rds')
+#test=readRDS('/home/work/spac/mguevara/INFyS/INFyS_2009-2012/INFyS_2009_NumEspecies_n42644_GLM_gsif_DEMO_test.rds')
+res=data.frame(rmse=numeric(), cor=numeric())
+
+for (i in 1:100){
+t1 <- separar1(data.frame(test), seed=NULL, trainsize=0.025)  ### repeat and change 1 per 0.025
+t<-t1[[1]];dim(t)
+rest=t1[[2]];dim(rest)
+coordinates(t)=~x+y
+proj4string(t)=crs('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ')
+t.lcc <- spTransform(t, CRS=CRS("+proj=lcc +lat_1=17.5 +lat_2=29.5 +lat_0=12 +lon_0=-102 +x_0=2500000 +y_0=0 +ellps=WGS84 +units=m +no_defs "))
+
+e<- extract (preds, t.lcc)
+
+
+t.lcc=cbind(data.frame(t.lcc),e)
+t.lcc=t.lcc[complete.cases(t.lcc),]
+cor(t.lcc[,c(1,26:34)])['NumEspecies',]
+#plot(t.lcc$NumEspecies, t.lcc$median, col='gray')
+#abline(lm(t.lcc$median~t.lcc$NumEspecies), col='black', lwd=6)
+abline(lm(t.lcc$median~t.lcc$NumEspecies), col='red', lty=2)
+res[i,1]=exp(rmse(log(t.lcc$NumEspecies),log(t.lcc$median)))
+res[i,2]=cor(log(t.lcc$median),log(t.lcc$NumEspecies))
+
+}
+
+
+

@@ -1,0 +1,89 @@
+library(rasterVis)
+d2009=readRDS("INFyS_2009_NumEspecies_PREDICTED5x5km_gsif_DEMO.rds")
+d2010=readRDS("INFyS_2010_NumEspecies_PREDICTED5x5km_gsif_DEMO.rds")
+d2011=readRDS("INFyS_2011_NumEspecies_PREDICTED5x5km_gsif_DEMO.rds")
+d2012=readRDS("INFyS_2012_NumEspecies_PREDICTED5x5km_gsif_DEMO.rds")
+
+s=stack(d2009[[9]],d2010[[9]],d2011[[9]],d2012[[9]])
+s[is.na(s)==TRUE]=0
+time <- 1:nlayers(s)
+fun <- function(x) { lm(x ~ time)$coefficients[2] }
+trend <- calc(s, fun)
+
+
+
+#library(rasterVis)
+#levelplot(p)
+#levelplot(trend,  par.settings = RdBuTheme, main='Trend of Forest Species Number (2009-2012)')
+
+
+lmp <- function (modelobject) {
+	if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+	f <- summary(modelobject)$fstatistic
+	p <- pf(f[1],f[2],f[3],lower.tail=F)
+	attributes(p) <- NULL
+	return(p)
+}
+
+fun2 <- function(x) { 
+#print(class(x))
+#print(x)
+if(length(na.omit(x))!=0){
+time <-1:length(x)
+#print(x)
+l<-lm(x ~ time)
+r<-l$coefficients[2]
+p<-lmp(l)
+rr<-c(r,p)
+} else{rr<-c(NA,NA)}
+return(rr)
+}
+
+t7813=t05
+t7911=t05
+delta <- calc(m[[2:34]], fun2)
+
+p05=as.data.frame(delta[[2]], xy=TRUE)
+p05=p05[p05$layer<0.05,]
+p05<-p05[complete.cases(p05),]
+coordinates(p05)=~x+y
+p05<-as(p05, 'SpatialPixelsDataFrame')
+p05=raster(p05)
+
+t05=crop(delta[[1]], p05)
+t05=mask(t05, p05)
+
+us=readRDS('USA_adm2.rds')
+
+levelplot(t05,par.settings=RdBuTheme(), at=seq(-max(abs(cellStats(t05, range))), max(abs(cellStats(t05, range))), len=10))+layer(sp.polygons(us))
+
+library(scales)
+
+df <- data.frame(long = 1:10, lat = 1:10,
+                 penetration = seq(from = 0.1, to = 1, by = 0.1))
+
+
+
+ggplot(data = df, aes(x = long, y = lat, fill = penetration)) +
+  geom_point(shape = 21, size = 6) +
+  scale_fill_continuous(labels = percent)
+
+beginCluster(16)
+delta <- clusterR(s, calc(s,fun2))
+endCluster()
+#
+
+
+d <- projectRaster(d2012, crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+rgb.palette <- colorRampPalette(c("white","darkgreen"))
+
+levelplot(d, col.regions=rgb.palette(120), main="Spatial inferences of the Number of Forest Species", xlab="long", ylab="lat" )
+
+levelplot(d[[1:2]], col.regions=rgb.palette(120), main="Ordinary and Universal Kriging", xlab="long", ylab="lat" )
+
+levelplot(d[[c(3,4,5,6,7,8)]], col.regions=rgb.palette(120), main="Linear model and regression trees", xlab="long", ylab="lat" )
+
+levelplot(d[[c(9,10)]], col.regions=rgb.palette(120), main="Median and SD (uncertainty proxy) ", xlab="long", ylab="lat" )
+
+####

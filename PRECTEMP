@@ -1,0 +1,169 @@
+//run/user/1000/gvfs/smb-share:server=bigdata1.anr.udel.edu,share=vargas/Users/Raskar/DATASETS/DAYMET/RASTERS/RASTERS/prcp/america/monthly2
+
+
+g=grep('_1$', names(s))
+jan=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+JAN <- clusterR(jan, f1)
+endCluster()
+
+g=grep('_2$', names(s))
+feb=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+FEB <- clusterR(feb, f1)
+endCluster()
+
+g=grep('_3$', names(s))
+mar=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+MAR <- clusterR(mar, f1)
+endCluster()
+
+g=grep('_4$', names(s))
+abr=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+ABR <- clusterR(abr, f1)
+endCluster()
+
+g=grep('_5$', names(s))
+may=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+MAY <- clusterR(may, f1)
+endCluster()
+
+g=grep('_6$', names(s))
+jun=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+JUN <- clusterR(jun, f1)
+endCluster()
+
+g=grep('_7$', names(s))
+jul=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+JUL <- clusterR(jul, f1)
+endCluster()
+
+g=grep('_8$', names(s))
+ago=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+AGO <- clusterR(ago, f1)
+endCluster()
+
+g=grep('_9$', names(s))
+sep=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+SEP <- clusterR(sep, f1)
+endCluster()
+
+g=grep('_10$', names(s))
+oct=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+OCT <- clusterR(oct, f1)
+endCluster()
+
+g=grep('_11$', names(s))
+nov=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+NOV <- clusterR(nov, f1)
+endCluster()
+
+g=grep('_12$', names(s))
+dic=s[[g]]
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+DIC <- clusterR(dic, f1)
+endCluster()
+
+S=stack(JAN, FEB, MAR, ABR, MAY, JUN, JUL, AGO, SEP, OCT, NOV, DIC)
+library(rasterVis)
+
+
+bwplot(S, par.settings=rasterTheme(),  scales=list(tck=c(1,0), x=list(cex=1.5), y=list(cex=1.5)))
+                 
+
+
+
+
+folders <- list.dirs(path=getwd(),full.name=TRUE)
+
+folders
+
+library(raster)
+
+s=stack()
+
+for (i in 13:length(folders)){
+
+filez <- list.files(paste(folders[i],sep=""),pattern="\\.tif$")
+
+#key=paste('_', i-1, '.tif', sep='') 
+
+g=grep('_6.tif', filez)
+
+filez[g]
+
+r = paste(folders[i],"/",filez[g],sep="")
+
+r=raster(r)
+
+s=stack(s, r)
+
+}
+
+writeRaster(s, '/home/mario/work/SoilMoisture/PrecipitacionMensualDaymet/months/Jun.tif')
+
+
+f1 <- function(x) calc(x, mean)
+beginCluster(6)
+Feb <- clusterR(s, f1)
+endCluster()
+
+bwplot(s, par.settings=rasterTheme(),  scales=list(tck=c(1,0), x=list(cex=1.5), y=list(cex=1.5)))
+                 
+
+
+xx <- readShapePoly("/home/mario/work/SoilMoisture/conus-maptools2.shp")
+
+proj4string(xx)=CRS('+proj=longlat +datum=WGS84 +no_defs ')
+xx=spTransform(xx, projection(s))
+s=mask(s,xx)
+
+
+
+
+ xx=mcparallel(mask(s, xx))
+ xx
+ xx=mccollect(xx)
+
+
+
+
+
+
+
+f1 <- function(x) calc(x, mean)
+beginCluster(5)
+Feb <- clusterR(s, f1)
+endCluster()
+
+
+
+Feb=calc(s, mean)
+
+
+
+
+
+
+

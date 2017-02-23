@@ -1,0 +1,22 @@
+install.packages(c('ggfortify','readxl'))
+
+library(ggfortify)
+library(readxl)
+
+setwd("/home/mario/Downloads/data")
+
+dat=read_excel("datosCarlosOmar.xlsx", sheet = 1)
+str(dat)
+row.names(dat)<-dat$País
+round(cor(dat[-1]), 2)
+
+pca=prcomp(dat[-1], scale=TRUE)
+pca
+Loadings <- as.data.frame(pca$rotation[,1:2])
+Loadings
+
+
+plot(pca)
+x11()
+biplot(pca)
+autoplot(prcomp(dat[-1]),label.size=5, data = dat, colour = 'País', loadings = TRUE,loadings.label = TRUE, loadings.label.size =5,loadings.colour = 'blue')

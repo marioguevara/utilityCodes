@@ -1,0 +1,58 @@
+plot(bin1, pch=20, col='black', cex=1.5)
+
+lines.variomodel(cov.model="mat", cov.pars=c(.42,.043), nug=0.08, kappa=1,max.dist=1, lty=3,lwd=2)
+
+lines.variomodel(cov.model="mat", cov.pars=c(.5,.04), nug=0.01,max.dist=1, lwd=2)
+
+#
+
+names(m)[[1]]<-'linearModel'
+names(m)[[2]]<-'randomForest'
+names(m)[[3]]<-'kknn'
+names(m)[[4]]<-'BayesReg'
+names(m)[[5]]<-'Median'
+names(m)[[6]]<-'Uncertainty'
+
+names(cmx)[[1]]<-'linearModel'
+names(cmx)[[2]]<-'randomForest'
+names(cmx)[[3]]<-'kknn'
+names(cmx)[[4]]<-'BayesReg'
+names(cmx)[[5]]<-'Median'
+names(mx)[[6]]<-'Uncertainty'
+myTheme <- rasterTheme(region=rev(terrain_hcl(12, c = c(65, 0), l = c(45, 95), power = c(1/3, 1.5))))
+#myTheme=rasterTheme(region=brewer.pal('Greens', n=3))
+ levelplot(log(cus[[1:4]]),par.settings = myTheme,scales=list(x=list(cex=1), y=list(cex=1)))
+
+d=data.frame(d09)
+ggplot(d, aes(x = X, y = Y)) +
+    geom_point(aes(size = NumEspecies, colour = NumEspecies)) + 
+          theme_bw()
+
+
+
+
+
+
+
+c(22,1,7,21)]
+zscaleLog=TRUE,
+
+myTheme <- rasterTheme(region=dichromat(rev(terrain_hcl(12, c = c(65, 0), l = c(45, 95), power = c(1/3, 1.5)))))
+
+
+levelplot(s[[c(22,1,7,21)]],par.settings = myTheme,scales=list(x=list(cex=1), y=list(cex=1)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

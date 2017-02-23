@@ -1,0 +1,82 @@
+
+# ... #prepare your data base and split it randomly for training and testing the models
+
+####PART 1, variable selection for random forest (citation in: http://math.unice.fr/~malot/PRLv4.pdf)
+##my data frame is entrenamiento an my response variable is soc
+#cov represent my covariate space in data frame and testing represents my validation test 
+
+library(VSURF)
+
+vsurf <- VSURF(entrenamiento[,4:24], entrenamiento$soc, parallel = TRUE, ncores = 4)
+plot(vsurf)
+vsurf
+##vsurf has several elements, extract them and decide which are the most important predictors, please skim the paper of Geuner et al 2010 and type ?VSURF in R in you have any doubt about how to extract the information from vsurf
+
+#predict to new data 
+
+predictions <- predict(vsurf, newdata = testing)
+
+testing$PRED=predict(model, testing, what=median)
+testing=na.omit(testing)
+CORvsurf=cor(testing$soc, predict(model, testing, what=median))
+
+CORvsurf  
+
+###calculate explained variance and rmse
+
+
+
+####PART 2, quantile regressionforest using the variables selected in par 1
+##
+#
+
+##specify in x YOUR most important variables and in nthreads specify the number of cpus in your computer to run it in parallel 
+
+model <- quantregForest(y=entrenamiento$soc, x=entrenamiento[c(4:20:22], ntree=600, nthreads=5) 
+
+testing$PRED=predict(model, testing, what=median)
+testing=na.omit(testing)
+CORqrf=cor(testing$soc, predict(model, testing, what=median))
+#explainedVariance 0-5cm r2 0.52
+CORqrf
+
+
+#predict to the all area in parallel (using all the cores of your computer)
+# here cov1 represents the covariate space in a raster stack format
+
+# predSd will be the uncertainty map already in raster and predMean the mean (you can change to median) of all single-tree predictions in the forest (already in raster)
+
+beginCluster()
+predMean<- clusterR(cov1, predict, args=list(model=model,what=mean))
+predSd<- clusterR(cov1, predict, args=list(model=model,what=sd))
+#writeRaster(predMean, file=, overwrite=FALSE) #specify the name and change when repeating this step with model residuals (e.g. preMeanRes)
+endCluster()
+}
+
+# regression kriging of quantile regression forest
+# extract model residuals in a new data frame
+
+residuales=data.frame(y=testing$y,x=testing$x, residuales=(testing$soc)-(testing$PRED))
+
+e=extract(cov1, residuales[,1:2])
+e=data.frame(e)
+residuales=cbind(residuales,  data.frame(e))
+residuales$cdep[is.na(residuales$cdep)==T] <- 0.0001
+residuales=na.omit(residuales)
+str(residuales)
+
+###REPEAT part 2 by replacin the training soc data with the residuals of the model and repeat
+###sum the first prediction predMean to the preMeanRes of residuals (just change the names and not overwrite)
+RK=preMeanRes+preMean
+plor(RK)
+
+
+
+
+
+
+
+
+
+
+

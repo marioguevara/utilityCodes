@@ -1,0 +1,19 @@
+library(raster)
+library(rasterVis)
+
+## Example data
+r <- s[[1]]
+
+r <- as.factor(r)
+
+## Add a landcover column to the Raster Attribute Table
+rat <- levels(r)[[1]]
+rat[["groups"]] <- rat$ID
+levels(r) <- rat
+
+lu=raster('/home/mario/work/SOC/urban_water_snow_nalccs.tif')
+
+plot(COR, col=rev(heat.colors(255)))
+ plot(lu, col='black', legend=FALSE, add=TRUE)
+plot(usa, add=TRUE)
+

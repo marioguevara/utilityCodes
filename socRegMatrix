@@ -1,0 +1,48 @@
+rm(list=ls())	
+
+library(raster)
+	
+	ex=readRDS("/home/mario/work/SOC/SOCv2/harmonizedDAT.rds")
+	
+	ex=na.omit(ex)
+
+	ex[ex$soc>=16.5,]=NA
+
+	ex=na.omit(ex)
+
+	ex[ex$x==400,]=NA
+
+	ex=na.omit(ex)
+
+	ex[ex$y==400,]=NA
+
+	ex=na.omit(ex)
+
+	coordinates(ex)=~x+y
+	
+	proj4string(ex)=CRS('+proj=longlat +datum=WGS84 +no_defs')
+
+	ex <- spTransform(ex, CRS("+proj=aeqd +lat_0=52 +lon_0=-97.5 +x_0=8264722.17686 +y_0=4867518.35323 +datum=WGS84
++units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"))
+
+
+
+lis=list.files(pattern='.rds')
+	m <- readRDS(lis[1])
+	m2=data.frame(m[1:1,], soc=c('1'))
+	m2=m2[-1,]
+
+	for (x in 1:length(lis)){
+		m <- readRDS(lis[x])
+		ov=over(ex, m)
+		ov$x=ex$x
+		ov$y=ex$y
+		ov$country=ex$country
+		ov$soc=ex$soc
+		ov=ov[complete.cases(ov),]
+		ov$TSDMOD3=NULL
+		ov$TSNMOD3=NULL
+		m2=rbind(m2, ov)
+	}
+
+saveRDS(m2, file='matrixRegSOC.rds')

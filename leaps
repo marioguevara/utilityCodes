@@ -1,0 +1,162 @@
+setwd('C:/Daphne/BD_TRABAJO_MARIO/modelos_prueba')
+dat=read.table("topoclima.txt", sep='\t', header=TRUE)
+dat1=read.table("dat0_5cm.csv", sep=',', header=T)
+data <- merge(dat,dat1,by='CODIGO',all=FALSE)
+write.csv(data,"basecompleta.csv")
+
+data=data.frame(id=data$CODIGO, data[,2:3], data)
+data=data.frame(id=data$CODIGO, data[,2:3], C=data$C, MDT=data$MDT, AH=data$Analytical.Hillshading, SL=data$Slope, As=data$Aspect, Pc=data$Plan.Curvature, PRC=data$Profile.Curvature, CI=data$Convergence.Index, CD=data$Closed.Depressions, CA=data$Catchment.Area, WI=data$Wetness.Index, LS=data$LS.Factor, CNBL=data$Channel.Network.Base.Level, VDCN=data$Vertical.Distance.to.Channek.Network, VD=data$Valley.Depth, RSP=data$Relative.Slope.Position, MRVBF=data$MRVBF, MRRTF=data$MRRTF)
+data=data[complete.cases(data),]
+summary(data)
+log(data$C)
+sapply(data, class)
+data$H <- NULL
+library(FactoMineR)
+library(sp)
+library(raster)
+library(car)
+cor(data)
+
+
+
+
+
+pcad<-(scale(data))
+PCA(pcad)
+plot(pcad, cex=0.6)
+summary(pcad)
+pcad$var$contrib
+
+data.matrix(data, rownames.force = NA)
+fit=princomp(scale(data))
+
+summary(fit)
+biplot(fit)
+
+
+proj=readRDS(file='variableModelSelection.rds')
+str(proj)
+proj=readRDS(proj, file='variableModelSelection.rds')
+cor(proj[,3:24])
+pca=princomp(pca)
+biplot(fit, col=c('gray', 'blue'))
+loadings(fit)
+
+
+
+fit=step(lm(C~.,data))
+maxp=fit$rank  
+library(leaps)
+regfit.full=regsubsets(C ~ AH + SL + As + MDT + Pc + CI +
+                         CA + WI + LS + CNBL + VD + 
+                         RSP + MRVBF + MRRTF,data=data)
+
+
+fit=step(lm(C~.,d))
+maxp=fit$rank  
+library(leaps)
+regfit.full=regsubsets(C ~ .,data=data, really.big=TRUE)
+
+
+
+
+reg.summary=  summary(regfit.full)
+
+par(mfrow=c(1,3))
+#adjr2
+
+par(mar=c(4,5,1,1))
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l", cex.axis=2, cex.lab=2)
+which.max(reg.summary$adjr2) # find the peak
+# highlight the peak
+points(which.max(reg.summary$adjr2),reg.summary$adjr2[which.max(reg.summary$adjr2)], col="red",cex=2,pch=20) # add points onto existing plot
+
+#bic
+par(mar=c(4,5,1,1))
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type="l",cex.axis=2, cex.lab=2)
+which.min(reg.summary$bic) # find the bottom
+# highlight the bottom
+points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)], col="red",cex=2,pch=20) # add points onto existing plot
+
+#cp
+par(mar=c(4,5,1,1))
+plot(reg.summary$cp,xlab="Number of Variables",ylab="CP",type="l",cex.axis=2, cex.lab=2)
+which.min(reg.summary$cp) # find the bottom
+# highlight the bottom
+points(which.min(reg.summary$cp),reg.summary$cp[which.min(reg.summary$cp)], col="red",cex=2,pch=20) # add points onto existing plot
+
+#determine chosen variables for each selection criteria
+plot(regfit.full,scale="adjr2")
+plot(regfit.full,scale="bic")
+plot(regfit.full,scale="Cp")
+
+# bic is the simplest model
+
+
+fit=lm(formula = C ~ AH + SL + As + MDT + Pc + PRC + CI +
+                    CD + CA + WI + LS + CNBL + VDCN + VD + 
+                    RSP + MRVBF + MRRTF,data=data) 
+
+
+fit=alias(lm(formula = C ~ AH + SL + As + MDT + Pc + PRC + CI +
+           CD + CA + WI + LS + CNBL + VDCN + VD + 
+           RSP + MRVBF + MRRTF,data=data))
+summary(fit)
+       
+
+
+par(mfrow=c(1,2))
+vif(fit)
+
+fit=(scale(data))
+
+barplot(vif(fit), las=2)
+?listof
+
+fit=lm(formula =  C ~ AH + SL + As + MDT + Pc + CI +
+          CA + WI + LS + CNBL + VD + 
+         RSP + MRVBF + MRRTF,data=data) 
+
+barplot(vif(fit), las=2)
+
+fit=lm(formula =  C ~ AH + SL + Pc,data=data) 
+
+barplot(vif(fit), las=2)
+
+#saveRDS(proj, file='variableModelSelection.rds')
+
+
+###AIC among models
+
+l=list()
+l[[1]]=lm1
+l[[2]]=res
+#saveRDS(l,'Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\linearModels\\valN70perc_500_twiEviTemp_lm.rds')
+
+lm=readRDS('Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\linearModels\\valN70perc_500_twiEviTemp_lm.rds')
+byl=readRDS('Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\rethinking\\valN70perc_10_m4s_twi_evi_temp.rds')
+rf=readRDS('Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\randomForests\\valN70perc_500_twiEviTemp_ranger.rds')
+kn=readRDS('Z:\\Mario_Guevara\\002_Reporte semanal\\SOIL_ORGANIC_CARBON\\kknn\\valN70perc_500_twiEviTemp_kn.rds')
+
+summary(lm[[2]])
+summary(byl[[2]])
+summary(kn[[2]])
+summary(rf[[2]])
+
+
+id=c('lm', 'blm', 'kknn','rf')
+rmse=c(0.53, 0.51, 0.46, 0.44)
+df=data.frame(id, rmse)
+df$aic=26753*log(df$rmse)+(2*3)
+df
+
+id=c('lm', 'blm', 'kknn','rf')
+R2=c(0.29, 0.28, 0.39, 0.49)
+df=data.frame(id, R2)
+df$aic=26753*log(df$R2)+(2*3)
+df
+
+
+
+
+
