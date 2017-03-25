@@ -1,0 +1,105 @@
+#QuantRegForest parallel prediction for uncertainty estimation of SoilGrids across North America. TEST1
+#Prepared by M. Guevara, Rodrigo Vargas and Tom Hengl
+#University of Delaware-ISRIC
+
+#open FARBER
+workgroup -g spac
+screen -a
+cd ..
+cd /home/work/spac/mguevara/SOIL_ORGANIC_CARBON
+#all 20 cores
+qlogin -l exclusive=1 -pe mpi 20
+
+#scp mguevara@farber.hpc.ude.edu/home/work/spac/mguevara/SOIL_ORGANIC_CARBON/#model159varQRFsocUSMX.rds /home/mario/work/COV250mNA
+
+vpkg_require r/3.2.5
+r-search GSIF
+vpkg_require r-gdal/20160509
+vpkg_require r-rethink
+
+#R
+R -q --no-save
+
+rm(list=ls())
+
+library(quantregForest)
+library(randomForest)
+library(raster)
+library(GSIF)
+library(sp)
+library(rgdal)
+
+dat=readRDS("matrixRegSOC.rds")
+
+dat$soc[dat$soc==0]=NA
+dat=na.omit(dat)
+dat$soc=log(dat$soc)
+
+model <- quantregForest(y=dat$soc, x=dat[,3:161], ntree=600) 
+
+dir=list.files( "/home/mario/work/COV250mNA")
+dir=dir[3:length(dir)]
+
+f2 <- function(x) x[[1]]-x[[2]]
+
+model=readRDS("model159varQRFsocUSMX.rds")
+
+for (x in 1:length(dir)){
+d=substr(dir[x], 35,61)
+
+m <- readRDS(dir[x])
+s=stack(m)
+beginCluster(3)
+predMean<- clusterR(s, predict, args=list(model=model,what=median))
+predSd<- clusterR(s, predict, args=list(model=model,what=0.25))
+pred2d2<- clusterR(s, predict, args=list(model=model,what=0.75))
+	X=stack(pred2d2,predSd)
+	predSd <- clusterR(X, f2)
+	s=stack(predMean, predSd)
+writeRaster(s, file=paste('SOCqrf_1Median_2SD_',d,'.tif', sep=''), overwrite=TRUE) 
+print(x)
+rm(list=setdiff(ls(), c('dir', 'model', 'x', 'f2')))
+
+endCluster()
+}
+
+
+beginCluster(5)
+	predMean<- clusterR(COV, predict, args=list(model=model,what=median))
+	predSd<- clusterR(COV, predict, args=list(model=model,what=0.25))
+	pred2d2<- clusterR(COV, predict, args=list(model=model,what=0.75))
+	x=stack(pred2d2,predSd)
+	predSd <- clusterR(x, f2)
+	s=stack(predMean, predSd)
+	writeRaster(s, file=paste(names(DAT)[i],'_sm_.tif', sep=''), overwrite=FALSE) 
+	endCluster()
+	print(i)
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#pred <- predict(lm1, interval="confidence",newdata=m)# 
+#pred <- predict(lm1, m)
+#pred=data.table(x=m$x, y=m$y, z=pred)
+#pred=data.table(x=m$x, y=m$y, data.frame(pred))
+#map=rbind(map, pred)
+#map=na.omit(map)
+}	
+
+
+
+
