@@ -2,10 +2,9 @@ alias vpn='/opt/cisco/anyconnect/bin/vpn'
 
 vpn
 
-vpn-dr.nss.udel.edu
 
-user    = vargaslab 
-password= sevUt4en
+user    = 
+password= 
 
 ssh mguevara@farber.hpc.udel.edu
 
