@@ -1,0 +1,67 @@
+---
+title: "RFsp-ok-sm-2012"
+author: "mg"
+date: "April 20, 2018"
+output: pdf_document
+---
+Objective: Use RFsp (from Hengl et al. 2018 https://github.com/thengl/GeoMLA) to predict 10 days of simulated soil moisture point data (0-5cm, 2D+time) across a study site in the great plains of continental US 
+```{r}
+library(ranger)
+library(rgdal)
+library(raster)
+library(GSIF)
+
+setwd("~/work/2012")
+sm <- readRDS('sm2012.rds')
+str(sm)
+plot(sm$DATE, sm$sm)
+(predictors <- stack(readRDS("co_grids.rds")))
+plot(predictors)
+#tom code
+co_prec <- sm
+co_grids <- predictors
+co_prec$cdate = floor(unclass(as.POSIXct(as.POSIXct(paste(co_prec$DATE), format="%Y-%m-%d")))/86400)
+co_prec$doy = as.integer(strftime(as.POSIXct(paste(co_prec$DATE), format="%Y-%m-%d"), format = "%j"))
+co_locs.sp = co_prec[!duplicated(co_prec$STATION),c("STATION","LATITUDE","LONGITUDE")]
+coordinates(co_locs.sp) = ~ LONGITUDE + LATITUDE
+proj4string(co_locs.sp) = CRS(projection(predictors))
+co_grids = as(co_grids, "SpatialPixelsDataFrame")
+co_locs.sp = spTransform(co_locs.sp, co_grids@proj4string)
+sel.co <- over(co_locs.sp, co_grids[1])
+co_locs.sp <- co_locs.sp[!is.na(sel.co$DEM),]
+#grid.distP <- GSIF::buffer.dist(co_locs.sp["STATION"], 
+#co_grids[1],as.factor(1:nrow(co_locs.sp))) 
+#saveRDS(grid.distP, file='grid-distP.rds')
+grid.distP <- readRDS('grid-distP.rds')
+dnP <- paste(names(grid.distP), collapse="+")
+ov.prec <- do.call(cbind, list(co_locs.sp@data, over(co_locs.sp, grid.distP), over(co_locs.sp, co_grids)))
+rm.sm <- plyr::join(co_prec, ov.prec)
+rm.sm <- na.omit(rm.sm)
+```
+
+Please note the differences in the out-of-bag cross validation form 
+
+```{r}
+#TWO MODELS
+fm1 <- as.formula(paste("sm ~ ", paste(names(co_grids), collapse='+'),'+', dnP))
+fm2 <- as.formula(paste("sm ~ cdate + doy +", paste(names(co_grids), collapse='+'),'+', dnP))
+#NOTE THE IMPROVEMENT HERE
+m1.sm <- ranger(fm1, rm.sm, importance = "impurity", num.trees = 150, mtry = 180, quantreg=TRUE)
+m2.sm <- ranger(fm2, rm.sm, importance = "impurity", num.trees = 150, mtry = 180, quantreg=TRUE)
+(m1.sm);(m2.sm)
+```
+
+Here is where the problem is 
+I can predict with no errors for model 1 but only one of the days
+#how to predict for all days at the same time?
+I can not predict for model 2 because cdate and doi are not in the covariate space, 
+# is there any automatic RFsp way to include those covariates?
+```{r}
+#works but gives only one map
+sm.rfd <- predict(m1.sm,  cbind(co_grids, grid.distP)@data, type="quantiles", 
+                  quantiles=c(0.025, 0.5, 0.975 ))$predictions
+#does not work
+#sm.rfd <- predict(m2.sm,  cbind(co_grids, grid.distP)@data, type="quantiles", #quantiles=quantiles=c(0.025, 0.5, 0.975 ))$predictions
+```
+please and thank you
+mg
