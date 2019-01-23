@@ -26,6 +26,10 @@ library(aqp)
 
 depths(dat) <- IDPROF ~ depth_min + depth_max
 
+#visualize some profiles
+
+plot(dat[1:10], color='fraction_organic_matter')
+
 # site definition 
 
 site(dat) <- ~ core_latitude + core_longitude
