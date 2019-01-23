@@ -1,0 +1,6 @@
+
+  #working environment
+  
+  setwd("~/Downloads/")
+
+
