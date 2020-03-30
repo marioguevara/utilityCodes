@@ -11,7 +11,7 @@ library(raster)
  proj4string(e) <- CRS(projection(DEM_TODO))
  #get the tiles of 0.5 degrees squares (in the units of the map)
 tiles <- getSpatialTiles(e, 0.5, 0.5, 
-         overlap.percent = 0, limit.bbox = TRUE, return.SpatialPolygons = TRUE)
+         overlap.percent = 20, limit.bbox = TRUE, return.SpatialPolygons = TRUE)
 #visualize the tiles
 plot(tiles)
 #overlap tile 1
