@@ -17,8 +17,11 @@ ens <- DATA[[3]]
 #predictors (terrain parameter columns 1:15 that we have at 10m and 1km grids)
 #x <-train[,c(1:15)]
 #response (SOIL CARBON, NOTE THAT THERE ARE SIX DEPTHS)
-y <- log1p(train$SOC1)
+#y <- log1p(train$SOC1)
 ###
+
+Mydata <- data.frame(long=train$coords.x1, lat=train$coords.x2, SOC1=log1p(train$SOC1)) 
+
 library(MACHISPLIN)
 interp.rast<-machisplin.mltps(int.values=Mydata, covar.ras=predictor_stack_test , n.cores=1, tps=TRUE)
 top <- interp.rast[[1]]$final
