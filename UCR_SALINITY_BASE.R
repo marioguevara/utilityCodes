@@ -330,8 +330,56 @@ mapview(x)
   res <- rbind(res, data)
   }
 
+x1 <- crop(res, drawExtent())
+x2 <- crop(res, drawExtent())
+proj4string(x1) <-CRS("+proj=utm +zone=10+datum=WGS84")
+proj4string(x2) <-CRS("+proj=utm +zone=11+datum=WGS84")
+x1 <- spTransform(x1, CRS='+proj=longlat +datum=WGS84')
+x2 <- spTransform(x2, CRS='+proj=longlat +datum=WGS84')
+x <- rbind(x1, x2)
+dim(x)
+mapview(x)
 
-proj4string(res) <-CRS("+proj=utm +zone=11+datum=WGS84")
-res <- spTransform(res, CRS='+proj=longlat +datum=WGS84')
+res <- spTransform(x, CRS='+proj=longlat +datum=WGS84')
 plot(res)
  
+saveRDS(res, 'San_Joaquin.rds')
+
+res <-readRDS('San_Joaquin.rds')
+
+res1 <- res[grep("\"" , as.character(res$DEPTH))] ###300 points contain this pattern in depth column "\""
+
+res <- res[-grep("\"" , as.character(res$DEPTH))]
+
+
+"0-12\""  "12-24\"" "24-36\"" "36-48\""
+[22] "48-60\"" "48-54\"" "48-59\""
+
+res <- res[-res1]
+
+ch <- as.character(res$DEPTH)
+
+top <- numeric()
+bot <- numeric()
+
+
+for(i in 1:length(ch)){
+  ch_i <- ch[i]
+  top[i] <- strsplit(ch_i[1], '-')[[1]][[1]]
+  bot[i] <- strsplit(ch_i[1], '-')[[1]][[2]]
+  }
+
+res$top <- top
+res$bot <- bot
+
+
+res$top <-as.numeric(res$top)
+res$bot <-as.numeric(res$bot)
+
+summary(res@data)
+
+  
+  
+
+
+
