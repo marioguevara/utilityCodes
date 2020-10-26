@@ -343,7 +343,7 @@ mapview(x)
 res <- spTransform(x, CRS='+proj=longlat +datum=WGS84')
 plot(res)
  
-saveRDS(res, 'San_Joaquin.rds')
+#saveRDS(res, 'San_Joaquin.rds')
 
 res <-readRDS('San_Joaquin.rds')
 res$DEPTH <- as.character(res$DEPTH)
@@ -381,8 +381,15 @@ res$bot <- as.numeric(bot)
 
 summary(res@data)
 
-  
-  
+res_ft <- res[c(1527:1556),]
+res_ft$top <- res_ft$top*100
+res_ft$bot <- res_ft$bot*100
+res <- res[-c(1527:1556),]
+res <- rbind(res, res_ft)
+
+
+
+
 
 
 
