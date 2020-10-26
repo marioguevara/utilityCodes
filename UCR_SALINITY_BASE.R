@@ -246,7 +246,9 @@ library()
 #
 #San Joaquin
 
-path <- '/home/mguevara/Downloads/SALINITY/GroundTruth_Data-20200827T035123Z-001/GroundTruth_Data/SanJoaquinValley'
+#path <- '/home/mguevara/Downloads/SALINITY/GroundTruth_Data-20200827T035123Z-001/GroundTruth_Data/SanJoaquinValley'
+path <- "/home/mario/Downloads/salinity_datasets/GroundTruth_Data/SanJoaquinValley"
+
 setwd(path)
 lis <- list.files(list.files(), full.name=TRUE)
 nam <- c("ID" , "X" ,  "Y"  , "EMv" , "EMh")
@@ -275,31 +277,58 @@ x <- rbind(x1, x2)
 dim(x)
 mapview(x)
 ###
-####
-path <- '/home/mguevara/Downloads/SALINITY/GroundTruth_Data-20200827T035123Z-001/GroundTruth_Data/SanJoaquinValley'
-setwd(path)
-lis <- list.files(list.files(), full.name=TRUE)
-#nam <- c("ID" , "X" ,  "Y"  , "EMv" , "EMh")
-nam2 <- c("Field ID"  ,  "X (UTM)"   ,  "Y (UTM)" ,    "EMv"  ,    "EMh"     ,"Depth (cm.)","ECe (dS/m)")
+  ####
+  path <- "/home/mario/Downloads/salinity_datasets/GroundTruth_Data/SanJoaquinValley"
+  setwd(path)
+  lis <- list.files(list.files(), full.name=TRUE)
+  #nam <- c("ID" , "X" ,  "Y"  , "EMv" , "EMh")
+  #nam2 <- c("Field ID"  ,  "X (UTM)"   ,  "Y (UTM)" ,    "EMv"  ,    "EMh"     ,"Depth (cm.)","ECe (dS/m)")
+  #idx <- grep('EMI', lis)
+  library(readxl)
+  length(lis[idx])
+  lis2 <- lis[-idx]
+  #lis2 <- lis[c(2,4)]
+  #res <- data.frame()
+  res1 <- read_excel(lis2[1])
+  res1 <- data.frame(Field=res1$FIELD, X=res1$x, Y=res1$y, EMv=res1$EMv, EMh=res1$EMh, ECe=res1$ECe, SP=res1$SP, DEPTH=res1$Depth)
+
+  res3 <- read_excel(lis2[3])
+  res3 <- data.frame(Field=res[1], X=res3[,3], Y=res3[,4], EMv=res3$Emv, EMh=res3$EMh, ECe=res3[,10], SP=res3[,9], DEPTH=res3[2])
+  names(res3) <-names(res1)
 
 
-#idx <- grep('EMI', lis)
-library(readxl)
-length(lis[idx])
-lis2 <- lis[-idx]
-#lis2 <- lis[c(2,4)]
-res <- data.frame()
-for (i in 1:length(lis2)){
-#for (i in 7:7){
-data <- read_excel(lis2[i])
-#names(data)[1:5]<- nam
-#print(i)
-print(names(data) )
-print(head(data))
-#print(summary(data[c('X','Y')]))
-#data <- data[nam2]
-#res <- rbind(res, data)
-}
+  res <- rbind(res1, res3)
+
+  lis2 <- lis2[-c(1, 3)]
+
+  for (i in 1:length(lis2)){
+
+    #for (i in 7:7){
+
+    data <- read_excel(lis2[i])
+    Field <- data[grep('Field' , names(data)) ] 
+    #X <- data[grep('x' , names(data)) ] # i = 1 = x, y i > = X, Y
+    #Y <- data[grep('y' , names(data)) ] # i = 1 = x, y i > = X, Y
+    X <- data[grep('X' , names(data)) ]
+    Y <- data[grep('Y' , names(data)) ]
+    EMv <- data[grep('EMv' , names(data)) ]
+
+
+    EMh <- data[grep('EMh' , names(data)) ]
+    ECe <- data[grep('ECe' , names(data)) ]
+    SP <- data[grep('SP' , names(data)) ]
+    DEPTH <- data[grep('Depth' , names(data))[1]]
+
+  data <- cbind(Field, X,Y, EMv, EMh, ECe, SP, DEPTH)
+  names(data) <- names(res)
+  #names(data)[1:5]<- nam
+  print(i)
+  print(names(data) )
+  #print(head(data))
+  #print(summary(data[c('X','Y')]))
+  #data <- data[nam2]
+  res <- rbind(res, data)
+  }
 
 
 proj4string(res) <-CRS("+proj=utm +zone=11+datum=WGS84")
