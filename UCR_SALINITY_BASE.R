@@ -388,8 +388,58 @@ res <- res[-c(1527:1556),]
 res <- rbind(res, res_ft)
 
 
+(readRDS('sanJoaquin_v0.rds'))
+
+########
+#####
+###SJRIP
+
+path <- "/home/mario/Downloads/salinity_datasets/GroundTruth_Data/SJRIP data_Amninder-20201020T174419Z-001/SJRIP data_Amninder"
+
+setwd(path)
 
 
+
+
+lis <- list.files(paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE))), full.names=TRUE)
+ECa <- data.frame()
+ECe <- data.frame()
+for (i in 28:length(lis)){ #19, 27, 
+dat <- read.delim(lis[i], header=F)
+len <-  length(names(dat))
+if ((len==1)==TRUE) {
+dat <- read.delim(lis[i], header=F, sep=',')
+ECa <- rbind(ECa, dat)
+} else {
+ECe <- rbind(ECe, dat)}
+}
+
+#dat <- read.delim(list.files(paste0(list.files(full.name=TRUE)[1],'/', list.files(list.files(full.name=TRUE)[1])[1]), full.names=TRUE)[2], header=F)
+names(dat) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
+
+#dat_a <- read.delim(list.files(paste0(list.files(full.name=TRUE)[1],'/', list.files(list.files(full.name=TRUE)[1])[1]), full.names=TRUE)[1], header=F, sep=',')
+names(dat_a) <- c('X', 'Y','EMv', 'EMh', 'id' )
+
+> dat <- read.delim(lis[19], header=F, sep=',')
+> names(dat)
+[1] "V1" "V2" "V3" "V4"
+#> head(dat)
+             V1      V2      V3      V4
+#1 LINE 1             NA      NA      NA
+#2    713849.873 4085427 275.234 210.742
+#3    713849.804 4085429 281.602 217.109
+#4    713849.693 4085431 279.805 215.039
+#5    713849.549 4085434 281.523 219.922
+#6    713849.315 4085436 293.516 235.195
+#> dat <- read.delim(lis[27], header=F, sep=',')
+#> head(dat)
+             V1      V2      V3      V4
+#1 LINE 1             NA      NA      NA
+#2    713159.670 4084598 323.242 262.500
+#3    713159.708 4084600 324.922 263.086
+#4    713159.909 4084602 329.648 265.859
+#5    713160.039 4084605 327.578 264.023
+#6    713160.011 4084607 326.680 266.211
 
 
 
