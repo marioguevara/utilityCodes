@@ -401,10 +401,11 @@ setwd(path)
 
 
 
-lis <- list.files(paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE))), full.names=TRUE)
+lis2 <- list.files(paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE))), full.names=TRUE)
 ECa <- data.frame()
 ECe <- data.frame()
-for (i in 28:length(lis)){ #19, 27, 
+lis <-lis2[-c(19,27)]#19 and 27 files have inconsistency in first row 
+for (i in 1:length(lis)){ 
 dat <- read.delim(lis[i], header=F)
 len <-  length(names(dat))
 if ((len==1)==TRUE) {
@@ -414,17 +415,35 @@ ECa <- rbind(ECa, dat)
 ECe <- rbind(ECe, dat)}
 }
 
+#1st row inconsistency 
+dat19 <- dat <- read.delim(lis2[19], header=F, sep=',')[-1,]
+head(dat19)
+dat19$V5 <- 'NA'
+names(dat19) <- c('X', 'Y','EMv', 'EMh', 'id' )
+
+dat27 <- dat <- read.delim(lis2[27], header=F, sep=',')[-1,]
+head(dat27)
+dat27$V5 <- 'NA'
+names(dat27) <- c('X', 'Y','EMv', 'EMh', 'id' )
+
+
 #dat <- read.delim(list.files(paste0(list.files(full.name=TRUE)[1],'/', list.files(list.files(full.name=TRUE)[1])[1]), full.names=TRUE)[2], header=F)
-names(dat) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
-
+names(ECe) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
 #dat_a <- read.delim(list.files(paste0(list.files(full.name=TRUE)[1],'/', list.files(list.files(full.name=TRUE)[1])[1]), full.names=TRUE)[1], header=F, sep=',')
-names(dat_a) <- c('X', 'Y','EMv', 'EMh', 'id' )
+names(ECa) <- c('X', 'Y','EMv', 'EMh', 'id' )
 
-> dat <- read.delim(lis[19], header=F, sep=',')
-> names(dat)
-[1] "V1" "V2" "V3" "V4"
+ECa <- rbind(ECa, dat19)
+ECa <- rbind(ECa, dat27)
+
+ECe$bot <- 0
+ECe$bot[ECe$DEPTH==60] <-30
+ECe$bot[ECe$DEPTH==90] <-60
+ECe$bot[ECe$DEPTH==120] <-90
+
+#> names(dat19)
+#[1] "V1" "V2" "V3" "V4"
 #> head(dat)
-             V1      V2      V3      V4
+#             V1      V2      V3      V4
 #1 LINE 1             NA      NA      NA
 #2    713849.873 4085427 275.234 210.742
 #3    713849.804 4085429 281.602 217.109
@@ -433,7 +452,7 @@ names(dat_a) <- c('X', 'Y','EMv', 'EMh', 'id' )
 #6    713849.315 4085436 293.516 235.195
 #> dat <- read.delim(lis[27], header=F, sep=',')
 #> head(dat)
-             V1      V2      V3      V4
+#             V1      V2      V3      V4
 #1 LINE 1             NA      NA      NA
 #2    713159.670 4084598 323.242 262.500
 #3    713159.708 4084600 324.922 263.086
