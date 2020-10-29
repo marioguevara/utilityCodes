@@ -448,6 +448,8 @@ ECa$id <- row.names(ECa)
 ##
 ###
 
+path <- "/home/mario/Downloads/salinity_datasets/GroundTruth_Data/SJRIP data_Amninder-20201020T174419Z-001/SJRIP data_Amninder"
+setwd(path)
 
 
 lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE)))
@@ -476,6 +478,8 @@ print(head(dat))
 print(head(dat2))
 dat$idx <- as.factor(row.names(dat))
 dat2$idx <- as.factor(dat2$id)
+  dat$field_season <- lis3[i]
+  dat2$field_season <- lis3[i]
 mer <- merge(dat2, dat, by='idx')
 ECe <- rbind(ECe, mer)
 ECa <- rbind(ECa, dat)
@@ -486,6 +490,8 @@ lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=T
 lis3 <- lis3[c(12, 11, 9, 8, 5)] #inverse order due specific syntax
 #lis3 <- lis3[-6]
 lis3 <- lis3[-4]# inconsistency in line 1
+ECe_rest <- data.frame()
+ECa_rest <- data.frame()
 for (i in 1:length(lis3)){
 #i=4
 dat <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[1],header=F)
@@ -502,14 +508,18 @@ names(dat2) <- c('X', 'Y','EMv', 'EMh', 'id' )
 names(dat) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
 print(head(dat))
 print(head(dat2))
-dat$idx <- as.factor(row.names(dat))
-dat2$idx <- as.factor(dat2$id)
+  print(dim(dat))
+  dat2$idx <- as.factor(row.names(dat2))
+dat$idx <- as.factor(dat$id)
+  dat$field_season <- lis3[i]
+  dat2$field_season <- lis3[i]
 mer <- merge(dat, dat2, by='idx')
-ECe <- rbind(ECe, mer)
-ECa <- rbind(ECa, dat2)
+ECe_rest <- rbind(ECe_rest, mer)
+ECa_rest <- rbind(ECa_rest, dat2)
 }
 
-
+ECe <- rbind(ECe, ECe_rest)
+ECa <- rbind(ECa, ECa_rest)
 
 
 coordinates(ECa) <- ~ X+Y
@@ -522,13 +532,8 @@ proj4string(ECe) <-CRS("+proj=utm +zone=10+datum=WGS84")
 ECe <- spTransform(ECe, CRS='+proj=longlat +datum=WGS84')
 mapview(ECe)
 
-
-
-
-
-
-
-
+lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE)))
+lis3 <- lis3[c(12, 11, 9, 8, 5)] #inverse order due specific syntax
 i=4
 dat <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[1],header=F)
 len <-  length(names(dat))
@@ -541,12 +546,22 @@ dat2 <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[2], header=F)}
 print(i)
 print(lis3[i])
 dat <- dat[-1,] # remove the row error
- 
-#names(dat2) <- c('X', 'Y','EMv', 'EMh', 'id' )
+names(dat2) <- c('X', 'Y','EMv', 'EMh', 'id' )
 #names(dat) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
 print(head(dat))
 print(head(dat2))
+##same thing dat and dat2
+dat2$idx <- as.factor(row.names(dat2))
+dat2$field_season <- lis3[i]
+coordinates(dat2) <- ~ X+Y
+proj4string(dat2) <-CRS("+proj=utm +zone=10+datum=WGS84")
+dat2 <- spTransform(dat2, CRS='+proj=longlat +datum=WGS84')
 
+ECa <- rbind(ECa, dat2)
+
+lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE)))
+lis3 <- lis3[c(12, 11, 9, 8, 5)] #inverse order due specific syntax
+#lis3 <- lis3[-6]
 
 library(aqp)
 
