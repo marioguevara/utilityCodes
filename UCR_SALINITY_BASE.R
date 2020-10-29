@@ -445,8 +445,55 @@ ECe$top <- as.numeric(ECe$DEPTH)
 ECe <- na.omit(ECe)
 
 ECa$id <- row.names(ECa)
+##
+###
 
 
+
+lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE)))
+#list.files(lis3[1], full.name=TRUE)[1]
+#list.files(lis3[1], full.name=TRUE)[2]
+lis3 <- lis3[-c(12, 11, 9, 8, 5)] #inverse order due specific syntax
+lis3 <- lis3[-6]
+
+#
+ECe <- data.frame()
+ECa <- data.frame()
+for (i in 1:length(lis3)){
+#for (i in 1:10){
+#i=1
+dat <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[1],header=F,)
+len <-  length(names(dat))
+if ((len==1)==TRUE) {
+dat <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[1], header=F, sep=',')}
+dat2 <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[2], header=F, sep=',')
+len <-  length(names(dat2))
+if ((len==1)==TRUE) {
+dat2 <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[2], header=F)}
+print(i)
+print(lis3[i])
+names(dat) <- c('X', 'Y','EMv', 'EMh', 'id' )
+names(dat2) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
+print(head(dat))
+print(head(dat2))
+dat$idx <- as.factor(row.names(dat))
+dat2$idx <- as.factor(dat2$id)
+mer <- merge(dat2, dat, by='idx')
+ECe <- rbind(ECe, mer)
+ECa <- rbind(ECa, dat)
+}
+
+
+
+coordinates(ECa) <- ~ X+Y
+proj4string(ECa) <-CRS("+proj=utm +zone=10+datum=WGS84")
+ECa <- spTransform(ECa, CRS='+proj=longlat +datum=WGS84')
+mapview(ECa)
+
+coordinates(ECe) <- ~ X+Y
+proj4string(ECe) <-CRS("+proj=utm +zone=10+datum=WGS84")
+ECe <- spTransform(ECe, CRS='+proj=longlat +datum=WGS84')
+mapview(ECe)
 
 
 library(aqp)
