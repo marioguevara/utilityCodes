@@ -395,12 +395,7 @@ res <- rbind(res, res_ft)
 ###SJRIP
 
 path <- "/home/mario/Downloads/salinity_datasets/GroundTruth_Data/SJRIP data_Amninder-20201020T174419Z-001/SJRIP data_Amninder"
-
 setwd(path)
-
-
-
-
 lis2 <- list.files(paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE))), full.names=TRUE)
 ECa <- data.frame()
 ECe <- data.frame()
@@ -426,7 +421,6 @@ head(dat27)
 dat27$V5 <- 'NA'
 names(dat27) <- c('X', 'Y','EMv', 'EMh', 'id' )
 
-
 #dat <- read.delim(list.files(paste0(list.files(full.name=TRUE)[1],'/', list.files(list.files(full.name=TRUE)[1])[1]), full.names=TRUE)[2], header=F)
 names(ECe) <- c('id', 'DEPTH', 'ECe', 'PS', 'GWC')
 #dat_a <- read.delim(list.files(paste0(list.files(full.name=TRUE)[1],'/', list.files(list.files(full.name=TRUE)[1])[1]), full.names=TRUE)[1], header=F, sep=',')
@@ -434,11 +428,44 @@ names(ECa) <- c('X', 'Y','EMv', 'EMh', 'id' )
 
 ECa <- rbind(ECa, dat19)
 ECa <- rbind(ECa, dat27)
+ECa$X <- as.numeric(ECa$X)
+dim(ECa)
+ECa <- na.omit(ECa)
+coordinates(ECa) <- ~ X+Y
+proj4string(ECa) <-CRS("+proj=utm +zone=10+datum=WGS84")
+ECa <- spTransform(ECa, CRS='+proj=longlat +datum=WGS84')
 
 ECe$bot <- 0
 ECe$bot[ECe$DEPTH==60] <-30
 ECe$bot[ECe$DEPTH==90] <-60
 ECe$bot[ECe$DEPTH==120] <-90
+
+ECe$top <- ECe$DEPTH
+ECe$top <- as.numeric(ECe$DEPTH)
+ECe <- na.omit(ECe)
+
+ECa$id <- row.names(ECa)
+
+
+
+library(aqp)
+
+ECe_aqp <- ECe
+depths(ECe_aqp) <- id ~ top + bot
+
+agg <- slab(ECe_aqp, fm= ~ ECe + PS)
+ xyplot(top ~ p.q50 | variable, data=agg, ylab='Depth',
+              xlab='median bounded by 25th and 75th percentiles',
+              lower=agg$p.q25, upper=agg$p.q75,
+              panel=panel.depth_function,
+              alpha=0.25, sync.colors=TRUE,
+              par.settings=list(superpose.line=list(col='RoyalBlue', lwd=2)),
+              prepanel=prepanel.depth_function,
+              cf=agg$contributing_fraction, cf.col='black', cf.interval=5, 
+              layout=c(2,1), strip=strip.custom(bg=grey(0.8)),
+              scales=list(x=list(tick.number=4, alternating=3, relation='free'))
+              )
+
 
 #> names(dat19)
 #[1] "V1" "V2" "V3" "V4"
