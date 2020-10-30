@@ -446,19 +446,19 @@ ECe <- na.omit(ECe)
 
 ECa$id <- row.names(ECa)
 ##
-###
+##
+
+
 
 path <- "/home/mario/Downloads/salinity_datasets/GroundTruth_Data/SJRIP data_Amninder-20201020T174419Z-001/SJRIP data_Amninder"
 setwd(path)
 library(rgdal)
 library(mapview)
-
-
 lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE)))
 #list.files(lis3[1], full.name=TRUE)[1]
 #list.files(lis3[1], full.name=TRUE)[2]
 lis3 <- lis3[-c(12, 11, 9, 8, 5)] #inverse order due specific syntax
-lis3 <- lis3[-6]
+#lis3 <- lis3[-6]
 ECe <- data.frame()
 ECa <- data.frame()
 for (i in 1:length(lis3)){
@@ -500,7 +500,7 @@ ECa <- rbind(ECa, dat)
 lis3 <- paste0(list.files(full.name=TRUE),'/', list.files(list.files(full.name=TRUE)))
 lis3 <- lis3[c(12, 11, 9, 8, 5)] #inverse order due specific syntax
 #lis3 <- lis3[-6]
-#lis3 <- lis3[-4]# inconsistency in line 1
+lis3 <- lis3[-4]# inconsistency in line 1
 ECe_rest <- data.frame()
 ECa_rest <- data.frame()
 for (i in 1:length(lis3)){
@@ -511,7 +511,7 @@ if ((len==1)==TRUE) {
 dat <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[1], header=F, sep=',')}
 dat2 <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[2], header=F, sep=',')
 len <-  length(names(dat2))
-if ((len==1)==TRUE) {
+if ((len==1)==TRUE) { 
 dat2 <- read.delim(paste0(lis3[i], '/', list.files(lis3[i]))[2], header=F)}
 print(i)
 print(lis3[i])
