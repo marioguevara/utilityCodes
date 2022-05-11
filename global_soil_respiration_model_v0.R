@@ -201,8 +201,7 @@ pr$yr <- 1990+i
 
  trendsSM <-  TrendRaster(sm, start=c(1991, 1), freq=1)
 
-#compute annual means of soil moisture and soil 
-respiration
+#compute annual means of soil moisture and soil respiration
 meanSM <- calc(sm, mean)
 meanRS <- calc(PREDS, mean)
 
@@ -211,69 +210,78 @@ library(raster)
 library(rgdal)
 
 dat <- read.csv("/home/mario/Downloads/XY_PRACTICAS.csv")
-
 dat <- dat[is.na(dat$Long) == FALSE,]
-
 dat$Lat <- as.numeric(dat$Lat)
-	
-
-
 dat$Long <- as.numeric(dat$Long)
 dat <- dat[is.na(dat$Long) == FALSE,]
-
-
 coordinates(dat) <- ~ Long + Lat
 
 #meanRS <- calc(PREDS, median)
 
 
-ref <- as(meanRS, 'SpatialPixelsDataFrame')
-
+meanRS <- calc(PREDS, mean)
+ref <- crop(meanRS, dat)
+ref <- as(ref, 'SpatialPixelsDataFrame')
 dat$meanRS <- extract(meanRS, dat)
-#plot(density(dat$meanRS), lwd=2, col='red')
+plot(density(dat$meanRS), lwd=2, col='red')
+set.seed(111)
 num <-as.numeric()
 for (i in 1:1000){
 xy <- spsample(ref,n=105,"random")
 xy$meanRS <- extract(meanRS, xy)
-num[i] <- median(xy$meanRS)
-#lines(density(xy$meanRS), col='gray', lty=2, lwd=0.5)
+num[i] <- mean(xy$meanRS)
+lines(density(xy$meanRS), col='gray', lty=2, lwd=0.5)
 }
 #boxplot(num, dat$meanRS)
-#abline(v=median(num), col='gray')
-#abline(v=median(dat$meanRS), col='red')
-
 confint(num)
 confint(dat$meanRS)
+abline(v=mean(num), col='gray')
+abline(v=mean(na.omit(dat$meanRS)), col='red')
 
-dat$trmeanrs <- extract(trendsRS[[2]], dat)
-plot(density(dat$trmeanrs), lwd=2, col='red')
+pv <- trendsRS[[3]]
+pv[pv>0.05] <- NA
+sig <- mask(trendsRS[[2]], pv)
+set.seed(222)
+dat$trmeanrs <- extract(sig, dat)
+plot(density(na.omit(dat$trmeanrs)), lwd=2, col='red')
 num <-as.numeric()
 for (i in 1:1000){
 xy <- spsample(ref,n=105,"random")
-xy$trmeanrs <- extract(trendsRS[[2]], xy)
-num[i] <- median(xy$trmeanrs)
-lines(density(xy$trmeanrs), col='gray', lty=2, lwd=0.5)
+xy$trmeanrs <- extract(sig, xy)
+num[i] <- mean(na.omit(xy$trmeanrs))
+lines(density(na.omit(xy$trmeanrs)), col='gray', lty=2, lwd=0.5)
 }
-boxplot(num, dat$trmeanrs)
-abline(v=median(num), col='gray')
-abline(v=median(dat$trmeanrs), col='red')
+abline(v=mean(num), col='gray')
+abline(v=mean(na.omit(dat$trmeanrs)), col='red')
+confint(num)
+confint(dat$trmeanrs)
 
+#boxplot(num, dat$trmeanrs)
 
+soc <- raster("/home/mario/Downloads/GSOCmap1.5.0.tif")
+ref <- crop(soc, dat)
+ref <- as(ref, 'SpatialPixelsDataFrame')
 dat$meansoc <- extract(soc, dat)
-plot(density(dat$meansoc), lwd=2, col='red')
+plot(density(na.omit(dat$meansoc)), lwd=2, col='red')
 num <-as.numeric()
 for (i in 1:100){
 xy <- spsample(ref,n=105,"random")
 xy$meansoc <- extract(soc, xy)
-num[i] <- median(xy$meansoc)
-lines(density(xy$meansoc), col='gray', lty=2, lwd=0.5)
+num[i] <- median(na.omit(xy$meansoc))
+lines(density(na.omit(xy$meansoc)), col='gray', lty=2, lwd=0.5)
 }
-boxplot(num, dat$meansoc)
+#boxplot(num, dat$meansoc)
 abline(v=median(num), col='gray')
-abline(v=median(dat$meansoc), col='red')
+abline(v=median(na.omit(xy$meansoc)), col='red', lwd=3)
+confint(num)
+confint(dat$meansoc)
+
 
 
 dat$meansm <- extract(meanSM, dat)
+ref <- crop(meanSM, dat)
+ref <- as(ref, 'SpatialPixelsDataFrame')
+
 plot(density(dat$meansm), lwd=2, col='red')
 num <-as.numeric()
 for (i in 1:100){
@@ -282,14 +290,19 @@ xy$meansm <- extract(meanSM, xy)
 num[i] <- median(xy$meansm)
 lines(density(xy$meansm), col='gray', lty=2, lwd=0.5)
 }
-boxplot(num, dat$meansm)
+#boxplot(num, dat$meansm)
 abline(v=median(num), col='gray')
 abline(v=median(dat$meansm), col='red')
 
 
+ref <- crop(trendsSM[[3]], dat)
+ref <- as(ref, 'SpatialPixelsDataFrame')
 
-dat$trmeansm <- extract(trendsSM[[2]], dat)
-plot(density(dat$trmeansm), lwd=2, col='red')
+pv <- trendsSM[[3]]
+pv[pv>0.05] <- NA
+sig <- mask(trendsSM[[2]], pv)
+dat$trmeansm <- extract(sig, dat)
+plot(density(na.omit(dat$trmeansm)), lwd=2, col='red')
 num <-as.numeric()
 for (i in 1:1000){
 xy <- spsample(ref,n=105,"random")
@@ -297,13 +310,18 @@ xy$trmeansm <- extract(trendsSM[[2]], xy)
 num[i] <- median(xy$trmeansm)
 lines(density(xy$trmeansm), col='gray', lty=2, lwd=0.5)
 }
-boxplot(num, dat$trmeansm)
+#boxplot(num, dat$trmeansm)
 abline(v=median(num), col='gray')
-abline(v=median(dat$trmeansm), col='red')
+abline(v=median(dat$st), col='red')
+confint(num)
+confint(dat$trmeansm)
 
 
 dat$st <- extract( raster("/home/mario/Downloads/SBIO1_Annual_Mean_Temperature_0_5cm.tif"), dat)
-plot(density(dat$st), lwd=2, col='red', xlim=c(-10, 10))
+
+ref <- crop(raster("/home/mario/Downloads/SBIO1_Annual_Mean_Temperature_0_5cm.tif"), dat)
+ref <- as(ref, 'SpatialPixelsDataFrame')
+plot(density(dat$st), lwd=2, col='red')
 num <-as.numeric()
 for (i in 1:100){
 xy <- spsample(ref,n=105,"random")
@@ -313,6 +331,11 @@ lines(density(na.omit(xy$st)), col='gray', lty=2, lwd=0.5)
 }
 
 abline(v=median(num), col='gray')
-abline(v=median(dat$st), col='red')
- 
+ abline(v=median(dat$st), col='red')
+
+boxplot(num, dat$trmeansm)
+abline(v=median(num), col='gray')
+abline(v=median(dat$trmeansm), col='red')
+
+
 
