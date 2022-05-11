@@ -1,21 +1,25 @@
-
+#load libraries
 library(raster)
 library(caret)
 library(openair)
-
+#read the Rs database
 srdb <- read.csv('https://raw.githubusercontent.com/bpbond/srdb/master/srdb-data.csv')
-
+#varibles of interest
 #selecciona variables
   RS <-  srdb[c('Longitude' , 'Latitude', 'Rs_annual', 'Entry_date')]
-  
-  RS$yr <- 1
+#fix date column
 
+RS$yr <- 1
 
 for (i in 1:nrow(RS)){RS$yr[i] <- unlist(strsplit(RS$Entry_date[i],'-'))[1]}
 
 yrs <- as.numeric(levels(as.factor(RS$yr)))
 
+#youd working folder should be the one where soil moisture estimates are saved
+
 lis <- list.files(pattern='45.tif')
+
+#extract values of soil moisture estimates to Rs points in a yearly basis
 
 RSsm <- data.frame()
 
@@ -34,7 +38,8 @@ names(ras) <- 'sm_mean'
 coordinates(RSi) <- ~ Longitude + Latitude
 
 RSi$sm <- extract(ras, RSi)
-
+	
+#include also the static predictors (soil organic carbon and soil temperature)
 RSi$soc <- extract(raster("/home/mario/Downloads/GSOCmap1.5.0.tif"), RSi)
 RSi$st <- extract(raster("/home/mario/Downloads/SBIO1_Annual_Mean_Temperature_0_5cm.tif"), RSi)
 
@@ -44,9 +49,11 @@ RSsm <- rbind(RSsm, df)
 
 }
 
+#remove NAs
 
 RSsm <- RSsm[is.na(RSsm$soc) == FALSE, ]
 
+#remove negative values and other NAs
 
 RSsm <- RSsm[RSsm$Rs_annual > 0,]
 RSsm <- RSsm[is.na(RSsm$sm_mean) == FALSE,]
@@ -55,9 +62,13 @@ RSsm <- RSsm[is.na(RSsm$sm_mean) == FALSE,]
 #library(dplyr)
 #df=RSsm[-4] %>% group_by(yr) %>% summarise_each(funs(mean))
 
-df=RSsm
+#prepare a new data frame
+
+df=data.frame(RSsm)
+
+#transform variables using a logarithmic scale
+
 df$yr <- log1p(as.numeric(df$yr))
-df <- data.frame(df)
 df$logRs <- log1p(df$Rs_annual)
 df$logSm <- log1p(df$sm_mean)
 df$logSoc <- log1p(df$soc)
@@ -79,12 +90,17 @@ df$logSt <- log1p(df$st)
 	#predictors(results)
 	# plot the results
 	#plot(results, type=c("g", "o"))
-	
+
+#Remove potential NAs
 	df_na <- na.omit(df)
 
-	 fit <- train(logRs ~ logSm + logSoc + logSt + yr, data=df_na, method='ranger', trControl = trainControl(method='repeatedcv',savePredictions = TRUE, repeats=5))
+#fit a ranger algorithms
+fit <- train(logRs ~ logSm + logSoc + logSt + yr, data=df_na, method='ranger', trControl = trainControl(method='repeatedcv',savePredictions = TRUE, repeats=5))
+#extract results
 res <- data.frame(mod=fit$pred$pred, obs=fit$pred$obs)
+#quantile evaluation
  conditionalQuantile(res, obs = "obs", mod = "mod")
+#evaluation critera
  openair::modStats(res, obs='obs', mod='mod')
 
 
@@ -93,16 +109,15 @@ res <- data.frame(mod=fit$pred$pred, obs=fit$pred$obs)
 #conditionalQuantile(res_orig, obs = "obs", mod = "mod")
 # openair::modStats(res_orig, obs='obs', mod='mod')
 
+#analyze variable importance
 
 library(ranger)
+library(ggplot2)
+library(dplyr)
 
  ran <- ranger(logRs ~ logSm + logSoc + logSt + yr, data=df_na, importance = "impurity", num.threads=10, keep.inbag=TRUE )
  
  #ran <- ranger(Rs_annual ~ sm_mean + soc + yr, data=df, importance = "impurity", num.threads=10, keep.inbag=TRUE )
-
-
-library(ggplot2)
- library(dplyr)
 
 imps <- data.frame(var = ran$forest$independent.variable.names,
                    imps = ran$variable.importance/max(ran$variable.importance))
@@ -113,17 +128,26 @@ imps %>%
   labs(x = "Predictors", y = "Importance scores") +
   theme_bw(18)
 
-
- SM <- stack(lis)
+#prepare prediction matrix (or prediction domain)
+#stack of soil moisture annual estimates
+SM <- stack(lis)
+#soil organic carbon map
  soc <- raster("/home/mario/Downloads/GSOCmap1.5.0.tif")
+#soil temperature estimates
  st <-raster("/home/mario/Downloads/SBIO1_Annual_Mean_Temperature_0_5cm.tif")
+#project to same grid 
  soc <- projectRaster(soc, SM)
   st <- projectRaster(st, SM)
- PREDS <- stack()
-
+#empty stack to store predictions
+PREDS <- stack()
+#function to remove NAs
 NA2mean <- function(x) replace(x, is.na(x), median(x, na.rm = TRUE))
+
+#one prediction for each year at a time to speed-up and optimize computational resources
+
 for (i in 1:dim(SM)[3]){
- sm <- SM[[i]]
+
+sm <- SM[[i]]
  
 pr <- stack(soc, sm, st)
  names(pr)[1] <- 'soc'
@@ -145,7 +169,7 @@ pr$yr <- 1990+i
  pr$logRs_predicted <- predict(fit , pr)
  #spplot(pr['logRs_predicted'])
 
-
+#back transform predictions from logarithmic scale
  
  pr$Rs_predicted_back <-  expm1(pr$logRs_predicted)
  
@@ -157,23 +181,32 @@ pr$yr <- 1990+i
  print(i)
  }
  
+#compute pixel wise trend detection of predicted soil respiration 
+
  library(miscset)
 
  library(greenbrown)
 
  trendsRS <-  TrendRaster(PREDS, start=c(1991, 1), freq=1)
  
+#working directory with soil moisture estimates (e.g., all files with '45.tif') 
+
  setwd("/home/mario/Downloads/curso/sm_kknn_eco_swc_terrain_15km.")
 
- s <- stack(list.files(pattern='45.tif'))
+ sm <- stack(list.files(pattern='45.tif'))
  
  library(greenbrown)	
 
- trendsSM <-  TrendRaster(s, start=c(1991, 1), freq=1)
+#Compute pixel-wise trends of soil moisture
 
-meanRS <- calc(s, median)
+ trendsSM <-  TrendRaster(sm, start=c(1991, 1), freq=1)
 
+#compute annual means of soil moisture and soil 
+respiration
+meanSM <- calc(sm, mean)
+meanRS <- calc(PREDS, mean)
 
+#import coordinates of sustainable soil management practices
 library(raster)
 library(rgdal)
 
@@ -197,17 +230,17 @@ coordinates(dat) <- ~ Long + Lat
 ref <- as(meanRS, 'SpatialPixelsDataFrame')
 
 dat$meanRS <- extract(meanRS, dat)
-plot(density(dat$meanRS), lwd=2, col='red')
+#plot(density(dat$meanRS), lwd=2, col='red')
 num <-as.numeric()
-for (i in 1:100){
+for (i in 1:1000){
 xy <- spsample(ref,n=105,"random")
 xy$meanRS <- extract(meanRS, xy)
 num[i] <- median(xy$meanRS)
-lines(density(xy$meanRS), col='gray', lty=2, lwd=0.5)
+#lines(density(xy$meanRS), col='gray', lty=2, lwd=0.5)
 }
-boxplot(num, dat$meanRS)
-abline(v=median(num), col='gray')
-abline(v=median(dat$meanRS), col='red')
+#boxplot(num, dat$meanRS)
+#abline(v=median(num), col='gray')
+#abline(v=median(dat$meanRS), col='red')
 
 confint(num)
 confint(dat$meanRS)
@@ -215,7 +248,7 @@ confint(dat$meanRS)
 dat$trmeanrs <- extract(trendsRS[[2]], dat)
 plot(density(dat$trmeanrs), lwd=2, col='red')
 num <-as.numeric()
-for (i in 1:100){
+for (i in 1:1000){
 xy <- spsample(ref,n=105,"random")
 xy$trmeanrs <- extract(trendsRS[[2]], xy)
 num[i] <- median(xy$trmeanrs)
