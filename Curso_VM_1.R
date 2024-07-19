@@ -6,16 +6,13 @@ setwd("~/Documentos/LST_3band_emissivity_Daily_1km_night_v61/LST_1KM")
 #install_github("ropensci/MODIStsp")
 
 library(MODIStsp)
+library(raster)
 library(terra)
 
 MODIStsp_get_prodnames()
 
-MODIStsp_get_prodlayers("M*D21A1N")$bandnames
-
-library(raster)
-sh = shapefile( "LimiteParque.shp")
-plot(sh)
-
+lim <- gadm(country="GTM", level=1, path=tempdir())
+box = bbox(as(lim, 'Spatial'))
 
 
 MODIStsp(gui             = FALSE,
@@ -26,10 +23,10 @@ MODIStsp(gui             = FALSE,
          sensor          = 'Terra',
          user            = 'mguevara@udel.edu' , # your username for NASA http server
          password        = 'Projectohel@das2024',  # your password for NASA http server
-         start_date      = '2020.01.01',
-         end_date        = '2024.05.14',
+         start_date      = '2024.01.01',
+         end_date        = '2024.06.15',
          verbose         = TRUE,
-         bbox            =  bbox(sh), #bbox of Latam
+         bbox            =  box, #bbox of Latam
          spatmeth        = 'bbox',
          out_format      = 'GTiff',
          compress        = 'LZW',
@@ -38,10 +35,7 @@ MODIStsp(gui             = FALSE,
          delete_hdf      = TRUE,
          scale_val       = TRUE,
          parallel        = TRUE
-         )
-
-
-
+)
 
 
 
