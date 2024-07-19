@@ -12,6 +12,12 @@ MODIStsp_get_prodnames()
 
 MODIStsp_get_prodlayers("M*D21A1N")$bandnames
 
+library(raster)
+sh = shapefile( "LimiteParque.shp")
+plot(sh)
+
+
+
 MODIStsp(gui             = FALSE,
          out_folder      = '/home/mario/Descargas/GTM',
          out_folder_mod  = '/home/mario/Descargas/GTM',
@@ -23,7 +29,7 @@ MODIStsp(gui             = FALSE,
          start_date      = '2020.01.01',
          end_date        = '2024.05.14',
          verbose         = TRUE,
-         bbox            =  c(-92.22236, -88.22567, 13.73828, 17.81652), #bbox of Latam
+         bbox            =  bbox(sh), #bbox of Latam
          spatmeth        = 'bbox',
          out_format      = 'GTiff',
          compress        = 'LZW',
