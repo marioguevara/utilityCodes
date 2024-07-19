@@ -10,6 +10,8 @@ library(terra)
 
 MODIStsp_get_prodnames()
 
+MODIStsp_get_prodlayers("M*D21A1N")$bandnames
+
 MODIStsp(gui             = FALSE,
          out_folder      = '/home/mario/Descargas/GTM',
          out_folder_mod  = '/home/mario/Descargas/GTM',
